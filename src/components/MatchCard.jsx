@@ -9,7 +9,12 @@ export default function MatchCard({ match, userId, initialPrediction }) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  const kickoff = new Date(match.kickoff_time);
+  // Ensure the timestamp is treated as UTC if the database omitted the timezone (fixes early locking in Australia/India)
+  let timeStr = match.kickoff_time;
+  if (timeStr.length === 19) { // Format: "YYYY-MM-DDTHH:mm:ss"
+    timeStr += 'Z';
+  }
+  const kickoff = new Date(timeStr);
   const isLocked = new Date() >= kickoff;
 
   const formattedDate = kickoff.toLocaleString(undefined, { 
