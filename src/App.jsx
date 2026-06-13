@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { HashRouter as Router, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom'
-import { Trophy, LogOut, Shield, Users, Medal, Settings as SettingsIcon } from 'lucide-react'
+import { Trophy, LogOut, Shield, Users, Medal, Settings as SettingsIcon, Menu, X } from 'lucide-react'
 import { supabase } from './lib/supabase'
 import MatchList from './components/MatchList'
 import AdminDashboard from './components/AdminDashboard'
@@ -13,6 +13,7 @@ import './App.css'
 function App() {
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -29,6 +30,8 @@ function App() {
     return () => subscription.unsubscribe()
   }, [])
 
+  const closeMenu = () => setIsMobileMenuOpen(false);
+
   if (loading) {
     return (
       <div className="main-content" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
@@ -41,29 +44,59 @@ function App() {
     <Router>
       <div className="main-content">
         <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3rem', flexWrap: 'wrap', gap: '1rem' }}>
-          <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'inherit' }}>
+          <Link to="/" onClick={closeMenu} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'inherit' }}>
             <Trophy color="var(--accent)" size={32} />
-            <h1 className="text-primary-gradient" style={{ margin: 0 }}>FIFA Predictor 2026</h1>
+            <h1 className="text-primary-gradient" style={{ margin: 0, fontSize: '1.5rem' }}>FIFA Predictor</h1>
           </Link>
           
           {session && (
-            <div className="nav-links" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
-              <Link to="/" className="btn btn-outline" style={{ border: 'none' }}>Matches</Link>
-              <Link to="/leaderboard" className="btn btn-outline" style={{ border: 'none', gap: '0.25rem' }}><Medal size={18}/> Global</Link>
-              <Link to="/leagues" className="btn btn-outline" style={{ border: 'none', gap: '0.25rem' }}><Users size={18}/> Leagues</Link>
-              <Link to="/settings" className="btn btn-outline" style={{ border: 'none', gap: '0.25rem' }}>
-                <SettingsIcon size={18} /> Settings
-              </Link>
-              <Link to="/admin" className="btn btn-outline" style={{ border: 'none', gap: '0.25rem' }}>
-                <Shield size={18} /> Admin
-              </Link>
+            <>
+              {/* Desktop Nav */}
+              <div className="nav-links desktop-nav" style={{ gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                <Link to="/" className="btn btn-outline" style={{ border: 'none' }}>Matches</Link>
+                <Link to="/leaderboard" className="btn btn-outline" style={{ border: 'none', gap: '0.25rem' }}><Medal size={18}/> Global</Link>
+                <Link to="/leagues" className="btn btn-outline" style={{ border: 'none', gap: '0.25rem' }}><Users size={18}/> Leagues</Link>
+                <Link to="/settings" className="btn btn-outline" style={{ border: 'none', gap: '0.25rem' }}>
+                  <SettingsIcon size={18} /> Settings
+                </Link>
+                <Link to="/admin" className="btn btn-outline" style={{ border: 'none', gap: '0.25rem' }}>
+                  <Shield size={18} /> Admin
+                </Link>
+                <button 
+                  className="btn btn-outline"
+                  onClick={() => supabase.auth.signOut()}
+                >
+                  <LogOut size={18} />
+                </button>
+              </div>
+
+              {/* Mobile Menu Toggle Button */}
               <button 
-                className="btn btn-outline"
-                onClick={() => supabase.auth.signOut()}
+                className="mobile-menu-btn" 
+                onClick={() => setIsMobileMenuOpen(true)}
               >
-                <LogOut size={18} />
+                <Menu size={28} />
               </button>
-            </div>
+
+              {/* Mobile Full Screen Overlay */}
+              <div className={`mobile-nav-overlay ${isMobileMenuOpen ? 'open' : ''}`}>
+                <button className="mobile-menu-close" onClick={closeMenu}>
+                  <X size={32} />
+                </button>
+                <Link to="/" className="btn btn-outline" onClick={closeMenu} style={{ border: 'none', gap: '0.5rem' }}><Trophy size={20}/> Matches</Link>
+                <Link to="/leaderboard" className="btn btn-outline" onClick={closeMenu} style={{ border: 'none', gap: '0.5rem' }}><Medal size={20}/> Global Leaderboard</Link>
+                <Link to="/leagues" className="btn btn-outline" onClick={closeMenu} style={{ border: 'none', gap: '0.5rem' }}><Users size={20}/> Private Leagues</Link>
+                <Link to="/settings" className="btn btn-outline" onClick={closeMenu} style={{ border: 'none', gap: '0.5rem' }}><SettingsIcon size={20}/> Settings</Link>
+                <Link to="/admin" className="btn btn-outline" onClick={closeMenu} style={{ border: 'none', gap: '0.5rem' }}><Shield size={20}/> Admin</Link>
+                <button 
+                  className="btn btn-outline"
+                  style={{ gap: '0.5rem', marginTop: '1rem', border: '1px solid var(--border-light)' }}
+                  onClick={() => { closeMenu(); supabase.auth.signOut(); }}
+                >
+                  <LogOut size={20} /> Sign Out
+                </button>
+              </div>
+            </>
           )}
         </header>
 
