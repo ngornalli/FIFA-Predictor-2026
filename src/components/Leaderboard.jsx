@@ -71,14 +71,15 @@ export default function Leaderboard() {
       </div>
 
       <div className="glass-panel" style={{ padding: 0, overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-          <thead>
-            <tr style={{ borderBottom: '1px solid var(--border-light)', backgroundColor: 'rgba(0,0,0,0.2)' }}>
-              <th style={{ padding: '1rem 1.5rem', width: '80px' }}>Rank</th>
-              <th style={{ padding: '1rem 1.5rem' }}>Player</th>
-              <th style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>Total Points</th>
-            </tr>
-          </thead>
+        <div style={{ overflowX: 'auto', width: '100%' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', whiteSpace: 'nowrap' }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid var(--border-light)', backgroundColor: 'rgba(0,0,0,0.2)' }}>
+                <th style={{ padding: '1rem 0.75rem', width: '60px' }}>Rank</th>
+                <th style={{ padding: '1rem 0.75rem' }}>Player</th>
+                <th style={{ padding: '1rem 0.75rem', textAlign: 'right' }}>Total Points</th>
+              </tr>
+            </thead>
           <tbody>
             {users.length === 0 ? (
               <tr>
@@ -98,19 +99,19 @@ export default function Leaderboard() {
                       borderLeft: user.id === currentUserId ? '4px solid var(--secondary)' : '4px solid transparent'
                     }}
                   >
-                    <td style={{ padding: '1rem 1.5rem', fontWeight: 'bold' }}>
+                    <td style={{ padding: '1rem 0.75rem', fontWeight: 'bold' }}>
                       {user.rank === 1 && <Award size={20} color="#fbbf24" style={{ verticalAlign: 'middle' }} />}
                       {user.rank === 2 && <Medal size={20} color="#9ca3af" style={{ verticalAlign: 'middle' }} />}
                       {user.rank === 3 && <Medal size={20} color="#b45309" style={{ verticalAlign: 'middle' }} />}
                       {user.rank > 3 && <span style={{ paddingLeft: '4px' }}>{user.rank}</span>}
                     </td>
-                    <td style={{ padding: '1rem 1.5rem', fontWeight: 600 }}>
+                    <td style={{ padding: '1rem 0.75rem', fontWeight: 600 }}>
                       <Link to={`/profile/${user.id}`} style={{ color: user.id === currentUserId ? 'var(--secondary)' : 'inherit', textDecoration: 'none' }}>
                         {user.username} {user.id === currentUserId && <span style={{ fontSize: '0.8rem', opacity: 0.8 }}>(You)</span>}
                       </Link>
                     </td>
                     <td 
-                      style={{ padding: '1rem 1.5rem', textAlign: 'right', fontSize: '1.1rem', color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline' }}
+                      style={{ padding: '1rem 0.75rem', textAlign: 'right', fontSize: '1.1rem', color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline' }}
                       onClick={() => openBreakdown(user)}
                       title={`View ${user.username}'s points breakdown`}
                     >
@@ -134,16 +135,16 @@ export default function Leaderboard() {
                         borderLeft: '4px solid var(--secondary)'
                       }}
                     >
-                      <td style={{ padding: '1rem 1.5rem', fontWeight: 'bold' }}>
+                      <td style={{ padding: '1rem 0.75rem', fontWeight: 'bold' }}>
                         <span style={{ paddingLeft: '4px' }}>{currentUser.rank}</span>
                       </td>
-                      <td style={{ padding: '1rem 1.5rem', fontWeight: 600 }}>
+                      <td style={{ padding: '1rem 0.75rem', fontWeight: 600 }}>
                         <Link to={`/profile/${currentUser.id}`} style={{ color: 'var(--secondary)', textDecoration: 'none' }}>
                           {currentUser.username} <span style={{ fontSize: '0.8rem', opacity: 0.8 }}>(You)</span>
                         </Link>
                       </td>
                       <td 
-                        style={{ padding: '1rem 1.5rem', textAlign: 'right', fontSize: '1.1rem', color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline' }}
+                        style={{ padding: '1rem 0.75rem', textAlign: 'right', fontSize: '1.1rem', color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline' }}
                         onClick={() => openBreakdown(currentUser)}
                         title={`View your points breakdown`}
                       >
@@ -156,6 +157,7 @@ export default function Leaderboard() {
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       {users.length > displayLimit && (
@@ -189,7 +191,7 @@ export default function Leaderboard() {
               Total: {selectedUser.total_points} Pts
             </div>
 
-            <div style={{ overflowY: 'auto', paddingRight: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', paddingRight: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               {breakdownLoading ? (
                 <div style={{ display: 'flex', justifyContent: 'center', padding: '2rem 0', color: 'var(--text-muted)' }}>
                   <Loader2 size={24} className="loading-spinner" />
