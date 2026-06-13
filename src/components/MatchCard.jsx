@@ -10,8 +10,8 @@ export default function MatchCard({ match, userId, initialPrediction }) {
   const [saved, setSaved] = useState(false);
 
   // Ensure the timestamp is treated as UTC if the database omitted the timezone (fixes early locking in Australia/India)
-  let timeStr = match.kickoff_time;
-  if (timeStr.length === 19) { // Format: "YYYY-MM-DDTHH:mm:ss"
+  let timeStr = match.kickoff_time.replace(' ', 'T'); // Supabase sometimes returns spaces instead of T
+  if (!/(Z|[+-]\d{2}(:\d{2})?)$/.test(timeStr)) {
     timeStr += 'Z';
   }
   const kickoff = new Date(timeStr);
