@@ -48,10 +48,9 @@ export default function Leaderboard() {
         matches!inner ( home_team, away_team, status, stage )
       `)
       .eq('user_id', user.id)
-      .in('matches.status', ['completed', 'finished']);
+      .not('matches.home_score', 'is', null);
 
     if (!error && data) {
-      setUserPredictions(data.filter(p => p.points > 0)); // Only show matches where they scored points, or show all finished matches? Let's show all finished.
       setUserPredictions(data);
     }
     setBreakdownLoading(false);
