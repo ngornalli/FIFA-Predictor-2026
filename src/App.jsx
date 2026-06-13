@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom'
+import { HashRouter as Router, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom'
 import { Trophy, LogOut, Shield, Users, Medal, Settings as SettingsIcon } from 'lucide-react'
 import { supabase } from './lib/supabase'
 import MatchList from './components/MatchList'
