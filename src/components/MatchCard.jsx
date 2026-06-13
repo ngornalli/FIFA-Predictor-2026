@@ -119,7 +119,11 @@ export default function MatchCard({ match, userId, initialPrediction }) {
       <div style={{ display: 'flex', justifyContent: 'center', marginTop: '0.75rem' }}>
         {isLocked ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: 600, background: 'rgba(255,255,255,0.05)', padding: '0.5rem 1rem', borderRadius: '20px' }}>
-            <Lock size={16} /> Match Locked
+            {match.home_score !== null && match.away_score !== null ? (
+              <><Check size={16} color="var(--secondary)" /> Final Score: <span style={{ color: 'var(--text-main)', fontSize: '1.1rem', margin: '0 0.25rem' }}>{match.home_score} - {match.away_score}</span></>
+            ) : (
+              <><Lock size={16} /> Match Locked</>
+            )}
           </div>
         ) : (
           <button 
