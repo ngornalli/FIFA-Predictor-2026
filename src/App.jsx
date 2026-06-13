@@ -107,6 +107,9 @@ function Landing() {
   const handleOAuthLogin = async (provider) => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: provider,
+      options: {
+        redirectTo: window.location.href
+      }
     })
     if (error) console.error('Error logging in:', error.message)
   }
