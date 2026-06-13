@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { Check, Lock, Save, Info } from 'lucide-react';
+import { Check, Lock, Save, Info, X } from 'lucide-react';
 import { getTeamInfo } from '../lib/flags';
 
 export default function MatchCard({ match, userId, initialPrediction }) {
@@ -181,49 +181,50 @@ export default function MatchCard({ match, userId, initialPrediction }) {
 
       {/* Breakdown Modal */}
       {showBreakdownModal && breakdown && (
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(4px)', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 'inherit', padding: '1rem' }}>
-          <div style={{ background: 'var(--bg-secondary)', padding: '1.5rem', borderRadius: '12px', width: '100%', border: '1px solid rgba(255,255,255,0.1)' }}>
-            <h4 style={{ marginBottom: '1rem', textAlign: 'center', color: 'var(--text-main)' }}>Points Breakdown</h4>
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(4px)', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 'inherit', padding: '0.5rem' }}>
+          <div style={{ background: 'var(--bg-secondary)', padding: '1rem', borderRadius: '12px', width: '90%', maxWidth: '300px', border: '1px solid rgba(255,255,255,0.1)', position: 'relative' }}>
             
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.9rem' }}>
+            <div 
+              style={{ position: 'absolute', top: '0.75rem', right: '0.75rem', cursor: 'pointer', color: 'var(--text-muted)' }}
+              onClick={() => setShowBreakdownModal(false)}
+            >
+              <X size={16} />
+            </div>
+
+            <h4 style={{ marginBottom: '0.75rem', textAlign: 'center', color: 'var(--text-main)', fontSize: '0.95rem' }}>Points Breakdown</h4>
+            
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem', fontSize: '0.8rem' }}>
               <span>Correct Outcome (10)</span>
               <strong style={{ color: breakdown.outcome > 0 ? 'var(--secondary)' : 'var(--text-muted)' }}>+{breakdown.outcome}</strong>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.9rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem', fontSize: '0.8rem' }}>
               <span>Correct Goals ({homeInfo.fifa}) (5)</span>
               <strong style={{ color: breakdown.home > 0 ? 'var(--secondary)' : 'var(--text-muted)' }}>+{breakdown.home}</strong>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.9rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem', fontSize: '0.8rem' }}>
               <span>Correct Goals ({awayInfo.fifa}) (5)</span>
               <strong style={{ color: breakdown.away > 0 ? 'var(--secondary)' : 'var(--text-muted)' }}>+{breakdown.away}</strong>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.9rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem', fontSize: '0.8rem' }}>
               <span>Correct Goal Difference (5)</span>
               <strong style={{ color: breakdown.diff > 0 ? 'var(--secondary)' : 'var(--text-muted)' }}>+{breakdown.diff}</strong>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', fontSize: '0.9rem', paddingBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem', fontSize: '0.8rem', paddingBottom: '0.75rem', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
               <span>Correct Score Bonus (5)</span>
               <strong style={{ color: breakdown.exact > 0 ? 'var(--secondary)' : 'var(--text-muted)' }}>+{breakdown.exact}</strong>
             </div>
             
             {breakdown.multiplier > 1 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', fontSize: '0.9rem', color: 'var(--accent)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem', fontSize: '0.8rem', color: 'var(--accent)' }}>
                 <span>Stage Multiplier</span>
                 <strong>x{breakdown.multiplier}</strong>
               </div>
             )}
             
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '1.1rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '0.95rem' }}>
               <span>Total Points</span>
               <span style={{ color: 'var(--secondary)' }}>{breakdown.total} Pts</span>
             </div>
-            
-            <button 
-              onClick={() => setShowBreakdownModal(false)}
-              style={{ width: '100%', marginTop: '1.5rem', padding: '0.75rem', background: 'rgba(255,255,255,0.1)', border: 'none', color: 'white', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}
-            >
-              Close
-            </button>
           </div>
         </div>
       )}
