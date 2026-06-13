@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { Check, Lock, Save } from 'lucide-react';
+import { Check, Lock, Save, Info } from 'lucide-react';
 import { getTeamInfo } from '../lib/flags';
 
 export default function MatchCard({ match, userId, initialPrediction }) {
@@ -8,6 +8,35 @@ export default function MatchCard({ match, userId, initialPrediction }) {
   const [awayScore, setAwayScore] = useState(initialPrediction?.away_score_pred ?? '');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [showBreakdownModal, setShowBreakdownModal] = useState(false);
+
+  const getBreakdown = () => {
+    if (match.home_score === null || match.away_score === null || !initialPrediction) return null;
+    const actualHome = match.home_score;
+    const actualAway = match.away_score;
+    const predHome = initialPrediction.home_score_pred;
+    const predAway = initialPrediction.away_score_pred;
+    
+    let actualOutcome = actualHome > actualAway ? 'HOME' : actualHome < actualAway ? 'AWAY' : 'DRAW';
+    let predOutcome = predHome > predAway ? 'HOME' : predHome < predAway ? 'AWAY' : 'DRAW';
+    
+    let actualDiff = actualHome - actualAway;
+    let predDiff = predHome - predAway;
+    
+    const breakdown = {
+      outcome: actualOutcome === predOutcome ? 10 : 0,
+      home: actualHome === predHome ? 5 : 0,
+      away: actualAway === predAway ? 5 : 0,
+      diff: actualDiff === predDiff ? 5 : 0,
+      exact: actualHome === predHome && actualAway === predAway ? 5 : 0,
+      multiplier: match.multiplier || 1
+    };
+    
+    breakdown.total = (breakdown.outcome + breakdown.home + breakdown.away + breakdown.diff + breakdown.exact) * breakdown.multiplier;
+    return breakdown;
+  };
+
+  const breakdown = getBreakdown();
 
   // Ensure the timestamp is treated as UTC if the database omitted the timezone (fixes early locking in Australia/India)
   let timeStr = match.kickoff_time.replace(' ', 'T'); // Supabase sometimes returns spaces instead of T
@@ -120,7 +149,20 @@ export default function MatchCard({ match, userId, initialPrediction }) {
         {isLocked ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: 600, background: 'rgba(255,255,255,0.05)', padding: '0.5rem 1rem', borderRadius: '20px' }}>
             {match.home_score !== null && match.away_score !== null ? (
-              <><Check size={16} color="var(--secondary)" /> Final Score: <span style={{ color: 'var(--text-main)', fontSize: '1.1rem', margin: '0 0.25rem' }}>{match.home_score} - {match.away_score}</span></>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <Check size={16} color="var(--secondary)" /> Final Score: <span style={{ color: 'var(--text-main)', fontSize: '1.1rem', margin: '0 0.25rem' }}>{match.home_score} - {match.away_score}</span>
+                </div>
+                {initialPrediction && breakdown && (
+                  <div 
+                    onClick={() => setShowBreakdownModal(true)}
+                    style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', background: 'rgba(255, 255, 255, 0.1)', padding: '0.25rem 0.75rem', borderRadius: '12px', cursor: 'pointer', color: breakdown.total > 0 ? 'var(--secondary)' : 'var(--text-muted)' }}
+                    title="Click to view points breakdown"
+                  >
+                    +{breakdown.total} Pts <Info size={14} />
+                  </div>
+                )}
+              </div>
             ) : (
               <><Lock size={16} /> Match Locked</>
             )}
@@ -136,6 +178,55 @@ export default function MatchCard({ match, userId, initialPrediction }) {
           </button>
         )}
       </div>
+
+      {/* Breakdown Modal */}
+      {showBreakdownModal && breakdown && (
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(4px)', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 'inherit', padding: '1rem' }}>
+          <div style={{ background: 'var(--bg-secondary)', padding: '1.5rem', borderRadius: '12px', width: '100%', border: '1px solid rgba(255,255,255,0.1)' }}>
+            <h4 style={{ marginBottom: '1rem', textAlign: 'center', color: 'var(--text-main)' }}>Points Breakdown</h4>
+            
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.9rem' }}>
+              <span>Correct Outcome (10)</span>
+              <strong style={{ color: breakdown.outcome > 0 ? 'var(--secondary)' : 'var(--text-muted)' }}>+{breakdown.outcome}</strong>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.9rem' }}>
+              <span>Correct Goals ({homeInfo.fifa}) (5)</span>
+              <strong style={{ color: breakdown.home > 0 ? 'var(--secondary)' : 'var(--text-muted)' }}>+{breakdown.home}</strong>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.9rem' }}>
+              <span>Correct Goals ({awayInfo.fifa}) (5)</span>
+              <strong style={{ color: breakdown.away > 0 ? 'var(--secondary)' : 'var(--text-muted)' }}>+{breakdown.away}</strong>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.9rem' }}>
+              <span>Correct Goal Difference (5)</span>
+              <strong style={{ color: breakdown.diff > 0 ? 'var(--secondary)' : 'var(--text-muted)' }}>+{breakdown.diff}</strong>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', fontSize: '0.9rem', paddingBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+              <span>Correct Score Bonus (5)</span>
+              <strong style={{ color: breakdown.exact > 0 ? 'var(--secondary)' : 'var(--text-muted)' }}>+{breakdown.exact}</strong>
+            </div>
+            
+            {breakdown.multiplier > 1 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', fontSize: '0.9rem', color: 'var(--accent)' }}>
+                <span>Stage Multiplier</span>
+                <strong>x{breakdown.multiplier}</strong>
+              </div>
+            )}
+            
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '1.1rem' }}>
+              <span>Total Points</span>
+              <span style={{ color: 'var(--secondary)' }}>{breakdown.total} Pts</span>
+            </div>
+            
+            <button 
+              onClick={() => setShowBreakdownModal(false)}
+              style={{ width: '100%', marginTop: '1.5rem', padding: '0.75rem', background: 'rgba(255,255,255,0.1)', border: 'none', color: 'white', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
