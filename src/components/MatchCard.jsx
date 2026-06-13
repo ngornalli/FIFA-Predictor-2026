@@ -15,7 +15,7 @@ export default function MatchCard({ match, userId, initialPrediction }) {
     timeStr += 'Z';
   }
   const kickoff = new Date(timeStr);
-  const isLocked = new Date() >= kickoff;
+  const isLocked = new Date() >= kickoff || match.status === 'completed' || match.status === 'finished' || match.home_score !== null;
 
   const formattedDate = kickoff.toLocaleString(undefined, { 
     month: 'short', 
