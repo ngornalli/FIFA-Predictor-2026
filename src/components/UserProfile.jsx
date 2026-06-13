@@ -27,7 +27,7 @@ export default function UserProfile() {
         .select(`
           home_score_pred,
           away_score_pred,
-          points_awarded,
+          points,
           matches!inner ( home_team, away_team, home_score, away_score, status, stage )
         `)
         .eq('user_id', userId)
@@ -88,8 +88,8 @@ export default function UserProfile() {
               <div key={i} className="glass-panel" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                   <span>{p.matches.stage}</span>
-                  <strong style={{ color: p.points_awarded > 0 ? 'var(--secondary)' : 'var(--text-muted)' }}>
-                    +{p.points_awarded || 0} Pts
+                  <strong style={{ color: p.points > 0 ? 'var(--secondary)' : 'var(--text-muted)' }}>
+                    +{p.points || 0} Pts
                   </strong>
                 </div>
                 <div style={{ fontWeight: 600 }}>
