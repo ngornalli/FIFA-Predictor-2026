@@ -10,6 +10,8 @@ export default function AdminUsers() {
   const [pointsFrom, setPointsFrom] = useState('');
   const [pointsTo, setPointsTo] = useState('');
   const [sortConfig, setSortConfig] = useState({ key: 'total_points', direction: 'desc' });
+
+  useEffect(() => {
     async function loadUsers() {
       const { data, error } = await supabase
         .from('users')
