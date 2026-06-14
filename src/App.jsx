@@ -137,11 +137,6 @@ function App() {
 }
 
 function Landing() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [isSignUp, setIsSignUp] = useState(false);
-
   const handleOAuthLogin = async (provider) => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: provider,
@@ -150,26 +145,6 @@ function Landing() {
       }
     })
     if (error) console.error('Error logging in:', error.message)
-  }
-
-  const handleEmailAuth = async (e) => {
-    e.preventDefault();
-    if (!email || !password) return;
-    setLoading(true);
-    
-    let result;
-    if (isSignUp) {
-      result = await supabase.auth.signUp({ email, password });
-    } else {
-      result = await supabase.auth.signInWithPassword({ email, password });
-    }
-    
-    if (result.error) {
-      alert(result.error.message);
-    } else if (isSignUp && !result.data.session) {
-      alert('Sign up successful! You may need to confirm your email depending on Supabase settings.');
-    }
-    setLoading(false);
   }
 
   return (
@@ -182,36 +157,6 @@ function Landing() {
       </p>
       
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxWidth: '300px', margin: '0 auto' }}>
-        <form onSubmit={handleEmailAuth} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '0.5rem' }}>
-          <input 
-            type="email" 
-            className="input-field" 
-            placeholder="Email address" 
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-          <input 
-            type="password" 
-            className="input-field" 
-            placeholder="Password" 
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            minLength="6"
-          />
-          <button type="submit" className="btn btn-primary" disabled={loading}>
-            {loading ? 'Processing...' : (isSignUp ? 'Sign Up' : 'Sign In')}
-          </button>
-        </form>
-        
-        <button 
-          type="button" 
-          onClick={() => setIsSignUp(!isSignUp)} 
-          style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', textDecoration: 'underline', marginBottom: '1rem' }}
-        >
-          {isSignUp ? 'Already have an account? Sign In' : 'Need an account? Sign Up'}
-        </button>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
           <button type="button" className="btn btn-outline" style={{ padding: '0.75rem 1rem', fontSize: '1rem', width: '100%' }} onClick={() => handleOAuthLogin('google')}>
