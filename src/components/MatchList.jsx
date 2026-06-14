@@ -66,6 +66,7 @@ export default function MatchList({ session }) {
   }
 
   const todayStr = new Date().toDateString();
+  const now = new Date();
 
   const completedMatches = [];
   const todaysMatches = [];
@@ -78,9 +79,10 @@ export default function MatchList({ session }) {
     }
     const kickoff = new Date(timeStr);
     const isToday = kickoff.toDateString() === todayStr;
+    const isPast = kickoff < now;
     const isFinished = match.status === 'finished' || match.status === 'completed' || match.home_score !== null;
 
-    if (isToday) {
+    if (isToday || (isPast && !isFinished)) {
       todaysMatches.push(match);
     } else if (isFinished) {
       completedMatches.push(match);
@@ -139,7 +141,7 @@ export default function MatchList({ session }) {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
             <Calendar size={24} color="var(--primary)" />
-            <h3 className="text-primary-gradient" style={{ fontSize: '1.5rem', margin: 0 }}>Today's Matches</h3>
+            <h3 className="text-primary-gradient" style={{ fontSize: '1.5rem', margin: 0 }}>Active & Today's Matches</h3>
           </div>
           {renderGrid(todaysMatches)}
         </div>
