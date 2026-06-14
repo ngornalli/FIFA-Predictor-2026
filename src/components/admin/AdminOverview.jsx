@@ -23,7 +23,7 @@ export default function AdminOverview() {
         supabase.from('users').select('*', { count: 'exact', head: true }),
         supabase.from('predictions').select('*', { count: 'exact', head: true }),
         supabase.from('leagues').select('*', { count: 'exact', head: true }),
-        supabase.from('matches').select('*', { count: 'exact', head: true }).in('status', ['finished', 'completed'])
+        supabase.from('matches').select('*', { count: 'exact', head: true }).not('home_score', 'is', null)
       ]);
 
       setStats({
