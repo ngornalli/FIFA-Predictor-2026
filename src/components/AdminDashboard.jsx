@@ -1,16 +1,19 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Save, Check, Shield } from 'lucide-react';
+import { Shield, LayoutDashboard, Users, Trophy, Activity, BarChart2 } from 'lucide-react';
+import AdminOverview from './admin/AdminOverview';
+import AdminMatches from './admin/AdminMatches';
+import AdminUsers from './admin/AdminUsers';
+import AdminLeagues from './admin/AdminLeagues';
+import AdminReports from './admin/AdminReports';
 
 export default function AdminDashboard({ session }) {
-  const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [savingId, setSavingId] = useState(null);
+  const [activeTab, setActiveTab] = useState('overview');
 
   useEffect(() => {
-    async function loadData() {
-      // Check if user is admin
+    async function checkAdmin() {
       const { data: userData } = await supabase
         .from('users')
         .select('is_admin')
@@ -19,42 +22,11 @@ export default function AdminDashboard({ session }) {
         
       if (userData?.is_admin) {
         setIsAdmin(true);
-        const { data: matchesData } = await supabase
-          .from('matches')
-          .select('*')
-          .order('kickoff_time', { ascending: true });
-        setMatches(matchesData || []);
       }
       setLoading(false);
     }
-    loadData();
+    checkAdmin();
   }, [session]);
-
-  const handleUpdateMatch = async (matchId, homeScore, awayScore, status) => {
-    setSavingId(matchId);
-    
-    const { error } = await supabase
-      .from('matches')
-      .update({
-        home_score: homeScore !== '' ? parseInt(homeScore) : null,
-        away_score: awayScore !== '' ? parseInt(awayScore) : null,
-        status: status
-      })
-      .eq('id', matchId);
-
-    if (error) {
-      alert('Error updating match: ' + error.message);
-    } else {
-      // Update local state
-      setMatches(matches.map(m => m.id === matchId ? {
-        ...m, 
-        home_score: homeScore !== '' ? parseInt(homeScore) : null,
-        away_score: awayScore !== '' ? parseInt(awayScore) : null,
-        status: status
-      } : m));
-    }
-    setSavingId(null);
-  };
 
   if (loading) return <p>Loading Admin Dashboard...</p>;
 
@@ -68,94 +40,62 @@ export default function AdminDashboard({ session }) {
     );
   }
 
+  const tabs = [
+    { id: 'overview', label: 'Overview', icon: <LayoutDashboard size={18} /> },
+    { id: 'matches', label: 'Matches', icon: <Activity size={18} /> },
+    { id: 'users', label: 'Users', icon: <Users size={18} /> },
+    { id: 'leagues', label: 'Leagues', icon: <Trophy size={18} /> },
+    { id: 'reports', label: 'Reports', icon: <BarChart2 size={18} /> },
+  ];
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'overview': return <AdminOverview />;
+      case 'matches': return <AdminMatches />;
+      case 'users': return <AdminUsers />;
+      case 'leagues': return <AdminLeagues />;
+      case 'reports': return <AdminReports />;
+      default: return <AdminOverview />;
+    }
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-        <Shield size={28} color="var(--accent)" />
-        <h2 className="text-primary-gradient">Admin Match Center</h2>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+        <Shield size={28} color="#ef4444" />
+        <h2 className="text-primary-gradient">Admin Command Center</h2>
       </div>
-      
-      <p style={{ color: 'var(--text-muted)' }}>
-        Update match scores and set status to "finished" to trigger automatic point calculation for all users.
-      </p>
 
-      <div style={{ overflowX: 'auto', background: 'var(--glass-bg)', padding: '1rem', borderRadius: '16px', border: '1px solid var(--glass-border)' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-          <thead>
-            <tr style={{ borderBottom: '1px solid var(--border-light)' }}>
-              <th style={{ padding: '1rem' }}>Match</th>
-              <th style={{ padding: '1rem' }}>Stage</th>
-              <th style={{ padding: '1rem', textAlign: 'center' }}>Home Score</th>
-              <th style={{ padding: '1rem', textAlign: 'center' }}>Away Score</th>
-              <th style={{ padding: '1rem' }}>Status</th>
-              <th style={{ padding: '1rem', textAlign: 'right' }}>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {matches.map(match => (
-              <AdminMatchRow 
-                key={match.id} 
-                match={match} 
-                onSave={handleUpdateMatch} 
-                saving={savingId === match.id} 
-              />
-            ))}
-          </tbody>
-        </table>
+      {/* Tab Navigation */}
+      <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', paddingBottom: '0.5rem', borderBottom: '1px solid var(--border-light)' }}>
+        {tabs.map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            style={{
+              padding: '0.75rem 1.25rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              background: activeTab === tab.id ? 'rgba(59, 130, 246, 0.15)' : 'transparent',
+              color: activeTab === tab.id ? 'var(--primary)' : 'var(--text-muted)',
+              border: '1px solid',
+              borderColor: activeTab === tab.id ? 'var(--primary)' : 'transparent',
+              borderRadius: '8px',
+              fontWeight: 600,
+              transition: 'all 0.2s ease',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            {tab.icon} {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab Content */}
+      <div style={{ marginTop: '1rem' }}>
+        {renderContent()}
       </div>
     </div>
-  );
-}
-
-function AdminMatchRow({ match, onSave, saving }) {
-  const [homeScore, setHomeScore] = useState(match.home_score ?? '');
-  const [awayScore, setAwayScore] = useState(match.away_score ?? '');
-  const [status, setStatus] = useState(match.status);
-
-  return (
-    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-      <td style={{ padding: '1rem', fontWeight: 600 }}>{match.home_team} vs {match.away_team}</td>
-      <td style={{ padding: '1rem', color: 'var(--text-muted)' }}>{match.stage}</td>
-      <td style={{ padding: '1rem', textAlign: 'center' }}>
-        <input 
-          type="number" 
-          className="input-field" 
-          style={{ width: '60px', padding: '0.25rem', textAlign: 'center' }}
-          value={homeScore}
-          onChange={e => setHomeScore(e.target.value)}
-        />
-      </td>
-      <td style={{ padding: '1rem', textAlign: 'center' }}>
-        <input 
-          type="number" 
-          className="input-field" 
-          style={{ width: '60px', padding: '0.25rem', textAlign: 'center' }}
-          value={awayScore}
-          onChange={e => setAwayScore(e.target.value)}
-        />
-      </td>
-      <td style={{ padding: '1rem' }}>
-        <select 
-          className="input-field" 
-          style={{ padding: '0.25rem', width: 'auto' }}
-          value={status}
-          onChange={e => setStatus(e.target.value)}
-        >
-          <option value="scheduled">Scheduled</option>
-          <option value="in_play">In Play</option>
-          <option value="finished">Finished</option>
-        </select>
-      </td>
-      <td style={{ padding: '1rem', textAlign: 'right' }}>
-        <button 
-          className="btn btn-outline" 
-          style={{ padding: '0.25rem 0.75rem', fontSize: '0.8rem' }}
-          onClick={() => onSave(match.id, homeScore, awayScore, status)}
-          disabled={saving}
-        >
-          {saving ? 'Saving...' : <><Save size={14} /> Update</>}
-        </button>
-      </td>
-    </tr>
   );
 }
