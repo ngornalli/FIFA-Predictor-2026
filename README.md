@@ -6,6 +6,9 @@ Built with a premium, modern "glassmorphism" UI and powered by a lightning-fast 
 
 ---
 
+<img width="1134" height="851" alt="image" src="https://github.com/user-attachments/assets/941a0cd1-03c2-409e-a2f7-de079e9e2f9d" />
+
+
 ## 🌟 Key Features
 - **Live Match Dashboard**: View upcoming and completed matches in a beautiful grid layout.
 - **Dynamic Point System**: Automated scoring based on exact scorelines, goal differences, and match outcomes.
@@ -65,3 +68,8 @@ Want to compete directly with your friends?
 2. Run `npm install` to install dependencies.
 3. Ensure you have a `.env` file with your `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
 4. Run `npm run dev` to start the local Vite server.
+
+<img width="1103" height="843" alt="image" src="https://github.com/user-attachments/assets/7b9d76cb-361c-49cf-ac6f-ec74d925f30d" />
+
+
+
