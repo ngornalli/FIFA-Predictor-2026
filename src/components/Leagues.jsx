@@ -5,11 +5,13 @@ import { Users, Plus, Hash, LogIn, ChevronLeft, Award, Medal, ChevronDown, X, Lo
 
 export default function Leagues({ session }) {
   const [leagues, setLeagues] = useState([]);
+  const [publicLeagues, setPublicLeagues] = useState([]);
   const [activeLeague, setActiveLeague] = useState(null);
   const [loading, setLoading] = useState(true);
 
   // Forms state
   const [newLeagueName, setNewLeagueName] = useState('');
+  const [isPublic, setIsPublic] = useState(false);
   const [joinCode, setJoinCode] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
 
@@ -20,12 +22,26 @@ export default function Leagues({ session }) {
       .from('league_members')
       .select(`
         league_id,
-        leagues ( id, name, invite_code, owner_id )
+        leagues ( id, name, invite_code, owner_id, is_public )
       `)
       .eq('user_id', session.user.id);
 
+    let myLeagueIds = [];
     if (!error && data) {
-      setLeagues(data.map(d => d.leagues));
+      const myLeagues = data.map(d => d.leagues).filter(Boolean);
+      setLeagues(myLeagues);
+      myLeagueIds = myLeagues.map(l => l.id);
+    }
+
+    // Fetch all public leagues
+    const { data: pubData, error: pubError } = await supabase
+      .from('leagues')
+      .select('id, name, owner_id, invite_code, is_public')
+      .eq('is_public', true);
+
+    if (!pubError && pubData) {
+      // Filter out leagues the user is already in
+      setPublicLeagues(pubData.filter(l => !myLeagueIds.includes(l.id)));
     }
     setLoading(false);
   };
@@ -41,7 +57,7 @@ export default function Leagues({ session }) {
 
     const { data, error } = await supabase
       .from('leagues')
-      .insert({ name: newLeagueName, owner_id: session.user.id })
+      .insert({ name: newLeagueName, owner_id: session.user.id, is_public: isPublic })
       .select()
       .single();
 
@@ -88,6 +104,20 @@ export default function Leagues({ session }) {
     setActionLoading(false);
   };
 
+  const handleJoinPublicLeague = async (leagueId) => {
+    setActionLoading(true);
+    const { error: joinError } = await supabase
+      .from('league_members')
+      .insert({ league_id: leagueId, user_id: session.user.id });
+
+    if (joinError) {
+      alert('Error joining public league.');
+    } else {
+      fetchLeagues();
+    }
+    setActionLoading(false);
+  };
+
   if (activeLeague) {
     return <LeagueLeaderboard league={activeLeague} onBack={() => setActiveLeague(null)} session={session} />;
   }
@@ -127,17 +157,29 @@ export default function Leagues({ session }) {
           <h3 style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Plus size={20} /> Create a League
           </h3>
-          <form onSubmit={handleCreateLeague} style={{ display: 'flex', gap: '0.5rem' }}>
-            <input 
-              type="text" 
-              className="input-field" 
-              placeholder="League Name" 
-              value={newLeagueName}
-              onChange={e => setNewLeagueName(e.target.value)}
-              disabled={actionLoading}
-              required
-            />
-            <button type="submit" className="btn btn-primary" disabled={actionLoading}>Create</button>
+          <form onSubmit={handleCreateLeague} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <input 
+                type="text" 
+                className="input-field" 
+                placeholder="League Name" 
+                value={newLeagueName}
+                onChange={e => setNewLeagueName(e.target.value)}
+                disabled={actionLoading}
+                required
+                style={{ flex: 1 }}
+              />
+              <button type="submit" className="btn btn-primary" disabled={actionLoading}>Create</button>
+            </div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+              <input 
+                type="checkbox" 
+                checked={isPublic} 
+                onChange={(e) => setIsPublic(e.target.checked)} 
+                disabled={actionLoading}
+              />
+              Make this league Public (anyone can join)
+            </label>
           </form>
         </div>
 
@@ -156,10 +198,44 @@ export default function Leagues({ session }) {
               disabled={actionLoading}
               required
             />
-            <button type="submit" className="btn btn-outline" disabled={actionLoading}>Join</button>
+            <button type="submit" className="btn btn-primary" disabled={actionLoading}>Join</button>
           </form>
         </div>
       </div>
+
+      {/* Public Leagues Section */}
+      <div style={{ marginTop: '1rem' }}>
+        <h3 style={{ fontSize: '1.4rem', marginBottom: '1rem', color: 'var(--text-main)' }}>Public Leagues</h3>
+        {loading ? (
+           <p className="text-muted">Loading public leagues...</p>
+        ) : publicLeagues.length === 0 ? (
+           <p className="text-muted glass-panel">No public leagues available to join right now.</p>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
+            {publicLeagues.map(league => (
+              <div 
+                key={league.id} 
+                className="glass-panel" 
+                style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1.5rem' }}
+              >
+                <div>
+                  <h3 style={{ fontSize: '1.3rem', marginBottom: '0.25rem' }}>{league.name}</h3>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Public League</p>
+                </div>
+                <button 
+                  className="btn btn-primary" 
+                  onClick={() => handleJoinPublicLeague(league.id)}
+                  disabled={actionLoading}
+                  style={{ alignSelf: 'flex-start' }}
+                >
+                  Join League
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
     </div>
   );
 }
