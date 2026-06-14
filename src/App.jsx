@@ -22,6 +22,10 @@ function App() {
       if (window.location.hash && window.location.hash.includes('access_token=')) {
         window.location.hash = '/';
       }
+      // Fix for OAuth: Clear the code from the URL so refreshes don't trigger errors
+      if (window.location.search && window.location.search.includes('code=')) {
+        window.history.replaceState({}, document.title, window.location.pathname + '#/');
+      }
       setLoading(false)
     })
 
@@ -141,7 +145,8 @@ function Landing() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: provider,
       options: {
-        redirectTo: window.location.href
+        // Strip the hash from the redirect URL so Supabase appends ?code= correctly
+        redirectTo: window.location.origin + window.location.pathname
       }
     })
     if (error) console.error('Error logging in:', error.message)
