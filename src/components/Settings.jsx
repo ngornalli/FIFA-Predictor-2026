@@ -8,6 +8,7 @@ export default function Settings({ session }) {
   const [message, setMessage] = useState(null);
   
   const [formData, setFormData] = useState({
+    username: '',
     first_name: '',
     last_name: '',
     dob: '',
@@ -23,12 +24,13 @@ export default function Settings({ session }) {
       setLoading(true);
       const { data, error } = await supabase
         .from('users')
-        .select('first_name, last_name, dob, phone, address, hobbies, favorite_team, favorite_player')
+        .select('username, first_name, last_name, dob, phone, address, hobbies, favorite_team, favorite_player')
         .eq('id', session.user.id)
         .single();
 
       if (data && !error) {
         setFormData({
+          username: data.username || '',
           first_name: data.first_name || '',
           last_name: data.last_name || '',
           dob: data.dob || '',
@@ -56,9 +58,22 @@ export default function Settings({ session }) {
     setSaving(true);
     setMessage(null);
 
+    // Validation
+    if (!formData.username.trim()) {
+      setMessage({ type: 'error', text: 'Username cannot be empty.' });
+      setSaving(false);
+      return;
+    }
+    if (formData.username.includes(' ')) {
+      setMessage({ type: 'error', text: 'Username cannot contain spaces.' });
+      setSaving(false);
+      return;
+    }
+
     const { error } = await supabase
       .from('users')
       .update({
+        username: formData.username,
         first_name: formData.first_name,
         last_name: formData.last_name,
         dob: formData.dob || null, // Handle empty date string
@@ -71,7 +86,11 @@ export default function Settings({ session }) {
       .eq('id', session.user.id);
 
     if (error) {
-      setMessage({ type: 'error', text: error.message });
+      if (error.code === '23505' || error.message.toLowerCase().includes('unique')) {
+        setMessage({ type: 'error', text: 'This username is already taken. Please choose another one.' });
+      } else {
+        setMessage({ type: 'error', text: error.message });
+      }
     } else {
       setMessage({ type: 'success', text: 'Profile updated successfully!' });
       setTimeout(() => setMessage(null), 3000);
@@ -101,6 +120,18 @@ export default function Settings({ session }) {
       )}
 
       <form onSubmit={handleSave} className="glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', padding: '2rem' }}>
+        <h3 style={{ color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '-0.5rem' }}>
+          <User size={18} /> Account Info
+        </h3>
+        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: '250px' }}>
+            <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>Username (Must be unique, no spaces)</label>
+            <input type="text" name="username" className="input-field" value={formData.username} onChange={handleChange} required />
+          </div>
+        </div>
+        
+        <hr style={{ border: 'none', borderTop: '1px solid var(--border-light)', margin: '1rem 0' }} />
+        
         <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
           <div style={{ flex: 1, minWidth: '250px' }}>
             <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>First Name</label>
