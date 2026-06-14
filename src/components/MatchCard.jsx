@@ -50,7 +50,8 @@ export default function MatchCard({ match, userId, initialPrediction }) {
     month: 'short', 
     day: 'numeric', 
     hour: 'numeric', 
-    minute: '2-digit' 
+    minute: '2-digit',
+    timeZoneName: 'short'
   });
 
   const handleSave = async () => {
