@@ -138,8 +138,9 @@ function App() {
 
 function Landing() {
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [emailSent, setEmailSent] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(false);
 
   const handleOAuthLogin = async (provider) => {
     const { error } = await supabase.auth.signInWithOAuth({
@@ -151,15 +152,22 @@ function Landing() {
     if (error) console.error('Error logging in:', error.message)
   }
 
-  const handleEmailLogin = async (e) => {
+  const handleEmailAuth = async (e) => {
     e.preventDefault();
-    if (!email) return;
+    if (!email || !password) return;
     setLoading(true);
-    const { error } = await supabase.auth.signInWithOtp({ email });
-    if (error) {
-      alert(error.message);
+    
+    let result;
+    if (isSignUp) {
+      result = await supabase.auth.signUp({ email, password });
     } else {
-      setEmailSent(true);
+      result = await supabase.auth.signInWithPassword({ email, password });
+    }
+    
+    if (result.error) {
+      alert(result.error.message);
+    } else if (isSignUp && !result.data.session) {
+      alert('Sign up successful! You may need to confirm your email depending on Supabase settings.');
     }
     setLoading(false);
   }
@@ -174,27 +182,36 @@ function Landing() {
       </p>
       
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxWidth: '300px', margin: '0 auto' }}>
-        {emailSent ? (
-          <div style={{ padding: '1rem', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid var(--secondary)', borderRadius: '8px', color: 'var(--secondary)' }}>
-            Magic link sent! Check your email to log in.
-          </div>
-        ) : (
-          <form onSubmit={handleEmailLogin} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
-            <input 
-              type="email" 
-              className="input-field" 
-              placeholder="Email address" 
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-            <button type="submit" className="btn btn-outline" disabled={loading}>
-              {loading ? 'Sending...' : 'Send Magic Link'}
-            </button>
-          </form>
-        )}
-
-
+        <form onSubmit={handleEmailAuth} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '0.5rem' }}>
+          <input 
+            type="email" 
+            className="input-field" 
+            placeholder="Email address" 
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+          <input 
+            type="password" 
+            className="input-field" 
+            placeholder="Password" 
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            minLength="6"
+          />
+          <button type="submit" className="btn btn-primary" disabled={loading}>
+            {loading ? 'Processing...' : (isSignUp ? 'Sign Up' : 'Sign In')}
+          </button>
+        </form>
+        
+        <button 
+          type="button" 
+          onClick={() => setIsSignUp(!isSignUp)} 
+          style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', textDecoration: 'underline', marginBottom: '1rem' }}
+        >
+          {isSignUp ? 'Already have an account? Sign In' : 'Need an account? Sign Up'}
+        </button>
 
         <button className="btn btn-outline" style={{ padding: '0.75rem 1rem', fontSize: '1rem' }} onClick={() => handleOAuthLogin('github')}>
           <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.03c3.18-.35 6.5-1.5 6.5-7.1a5.25 5.25 0 0 0-1.5-3.8 4.33 4.33 0 0 0 0-3.8s-1.18-.38-3.9 1.4a13.38 13.38 0 0 0-7 0c-2.72-1.78-3.9-1.4-3.9-1.4a4.33 4.33 0 0 0 0 3.8 5.25 5.25 0 0 0-1.5 3.8c0 5.6 3.3 6.75 6.5 7.1a4.8 4.8 0 0 0-1 3.03v4"/><path d="M9 20c-3 1-5-1-5-3"/></svg>
