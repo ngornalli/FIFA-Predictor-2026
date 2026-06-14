@@ -179,12 +179,13 @@ function Landing() {
 }
 
 function Dashboard({ session }) {
-  const username = session.user.user_metadata?.user_name || session.user.email
+  const metadata = session.user.user_metadata || {};
+  const displayName = metadata.full_name || metadata.name || metadata.user_name || session.user.email;
 
   return (
     <div>
       <div className="glass-panel" style={{ marginBottom: '2rem' }}>
-        <h2 style={{ marginBottom: '0.5rem' }}>Welcome back, <span className="text-primary-gradient">{username}</span>!</h2>
+        <h2 style={{ marginBottom: '0.5rem' }}>Welcome back, <span className="text-primary-gradient">{displayName}</span>!</h2>
         <p style={{ color: 'var(--text-muted)' }}>You are now ready to make your predictions.</p>
       </div>
       
