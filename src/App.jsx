@@ -18,6 +18,10 @@ function App() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
+      // Fix for Magic Links and HashRouter: Clear the access token from the URL
+      if (window.location.hash && window.location.hash.includes('access_token=')) {
+        window.location.hash = '/';
+      }
       setLoading(false)
     })
 
