@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { Trophy, Medal, Award, ChevronDown, X, Loader2 } from 'lucide-react';
+import { Trophy, Medal, Award, ChevronDown, X, Loader2, Info } from 'lucide-react';
 
 export default function Leaderboard() {
   const [users, setUsers] = useState([]);
@@ -13,6 +13,9 @@ export default function Leaderboard() {
   const [selectedUser, setSelectedUser] = useState(null);
   const [breakdownLoading, setBreakdownLoading] = useState(false);
   const [userPredictions, setUserPredictions] = useState([]);
+
+  // Info Modal State
+  const [showInfo, setShowInfo] = useState(false);
 
   useEffect(() => {
     async function loadLeaderboard() {
@@ -64,7 +67,10 @@ export default function Leaderboard() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', position: 'relative' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
         <Trophy size={28} color="var(--accent)" />
-        <h2 className="text-primary-gradient">Global Leaderboard</h2>
+        <h2 className="text-primary-gradient" style={{ margin: 0 }}>Global Leaderboard</h2>
+        <button onClick={() => setShowInfo(true)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', padding: '0.25rem' }} title="How is this calculated?">
+          <Info size={20} />
+        </button>
       </div>
 
       <div className="glass-panel" style={{ padding: 0, overflow: 'hidden' }}>
@@ -99,30 +105,32 @@ export default function Leaderboard() {
                       borderLeft: user.id === currentUserId ? '4px solid var(--secondary)' : '4px solid transparent'
                     }}
                   >
-                    <td style={{ padding: '1rem 0.75rem', fontWeight: 'bold' }}>
+                    <td style={{ padding: '1rem 0.75rem', fontWeight: 'bold', verticalAlign: 'middle' }}>
                       {user.rank === 1 && <Award size={20} color="#fbbf24" style={{ verticalAlign: 'middle' }} />}
                       {user.rank === 2 && <Medal size={20} color="#9ca3af" style={{ verticalAlign: 'middle' }} />}
                       {user.rank === 3 && <Medal size={20} color="#b45309" style={{ verticalAlign: 'middle' }} />}
                       {user.rank > 3 && <span style={{ paddingLeft: '4px' }}>{user.rank}</span>}
                     </td>
                     <td style={{ padding: '1rem 0.75rem', fontWeight: 600 }}>
-                      <Link to={`/profile/${user.id}`} style={{ color: user.id === currentUserId ? 'var(--secondary)' : 'inherit', textDecoration: 'none' }}>
-                        {user.first_name || user.last_name ? `${user.first_name || ''} ${user.last_name || ''}`.trim() : user.username}
-                        {(user.first_name || user.last_name) && <span style={{ fontSize: '0.75rem', opacity: 0.6, marginLeft: '0.5rem', fontWeight: 'normal' }}>({user.username})</span>}
-                        {user.id === currentUserId && <span style={{ fontSize: '0.8rem', opacity: 0.8, marginLeft: '0.5rem' }}>(You)</span>}
+                      <Link to={`/profile/${user.id}`} style={{ color: user.id === currentUserId ? 'var(--secondary)' : 'inherit', textDecoration: 'none', display: 'flex', flexDirection: 'column' }}>
+                        <span>
+                          {user.first_name || user.last_name ? `${user.first_name || ''} ${user.last_name || ''}`.trim() : user.username}
+                          {user.id === currentUserId && <span style={{ fontSize: '0.8rem', opacity: 0.8, marginLeft: '0.5rem' }}>(You)</span>}
+                        </span>
+                        {(user.first_name || user.last_name) && <span style={{ fontSize: '0.75rem', opacity: 0.6, fontWeight: 'normal', marginTop: '0.1rem' }}>({user.username})</span>}
                       </Link>
                     </td>
-                    <td style={{ padding: '1rem 0.75rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                    <td style={{ padding: '1rem 0.75rem', textAlign: 'center', color: 'var(--text-muted)', verticalAlign: 'middle' }}>
                       {user.finished_predictions}
                     </td>
-                    <td style={{ padding: '1rem 0.75rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                    <td style={{ padding: '1rem 0.75rem', textAlign: 'center', color: 'var(--text-muted)', verticalAlign: 'middle' }}>
                       {user.correct_predictions}
                     </td>
-                    <td style={{ padding: '1rem 0.75rem', textAlign: 'center', fontWeight: 'bold', color: 'var(--accent)' }}>
+                    <td style={{ padding: '1rem 0.75rem', textAlign: 'center', fontWeight: 'bold', color: 'var(--accent)', verticalAlign: 'middle' }}>
                       {user.accuracy_percentage}%
                     </td>
                     <td 
-                      style={{ padding: '1rem 0.75rem', textAlign: 'right', fontSize: '1.1rem', color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline' }}
+                      style={{ padding: '1rem 0.75rem', textAlign: 'right', fontSize: '1.1rem', color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline', verticalAlign: 'middle' }}
                       onClick={() => openBreakdown(user)}
                       title={`View ${user.username}'s points breakdown`}
                     >
@@ -146,27 +154,29 @@ export default function Leaderboard() {
                         borderLeft: '4px solid var(--secondary)'
                       }}
                     >
-                      <td style={{ padding: '1rem 0.75rem', fontWeight: 'bold' }}>
+                      <td style={{ padding: '1rem 0.75rem', fontWeight: 'bold', verticalAlign: 'middle' }}>
                         <span style={{ paddingLeft: '4px' }}>{currentUser.rank}</span>
                       </td>
                       <td style={{ padding: '1rem 0.75rem', fontWeight: 600 }}>
-                        <Link to={`/profile/${currentUser.id}`} style={{ color: 'var(--secondary)', textDecoration: 'none' }}>
-                          {currentUser.first_name || currentUser.last_name ? `${currentUser.first_name || ''} ${currentUser.last_name || ''}`.trim() : currentUser.username}
-                          {(currentUser.first_name || currentUser.last_name) && <span style={{ fontSize: '0.75rem', opacity: 0.6, marginLeft: '0.5rem', fontWeight: 'normal' }}>({currentUser.username})</span>}
-                          <span style={{ fontSize: '0.8rem', opacity: 0.8, marginLeft: '0.5rem' }}>(You)</span>
+                        <Link to={`/profile/${currentUser.id}`} style={{ color: 'var(--secondary)', textDecoration: 'none', display: 'flex', flexDirection: 'column' }}>
+                          <span>
+                            {currentUser.first_name || currentUser.last_name ? `${currentUser.first_name || ''} ${currentUser.last_name || ''}`.trim() : currentUser.username}
+                            <span style={{ fontSize: '0.8rem', opacity: 0.8, marginLeft: '0.5rem' }}>(You)</span>
+                          </span>
+                          {(currentUser.first_name || currentUser.last_name) && <span style={{ fontSize: '0.75rem', opacity: 0.6, fontWeight: 'normal', marginTop: '0.1rem' }}>({currentUser.username})</span>}
                         </Link>
                       </td>
-                      <td style={{ padding: '1rem 0.75rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                      <td style={{ padding: '1rem 0.75rem', textAlign: 'center', color: 'var(--text-muted)', verticalAlign: 'middle' }}>
                         {currentUser.finished_predictions}
                       </td>
-                      <td style={{ padding: '1rem 0.75rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                      <td style={{ padding: '1rem 0.75rem', textAlign: 'center', color: 'var(--text-muted)', verticalAlign: 'middle' }}>
                         {currentUser.correct_predictions}
                       </td>
-                      <td style={{ padding: '1rem 0.75rem', textAlign: 'center', fontWeight: 'bold', color: 'var(--accent)' }}>
+                      <td style={{ padding: '1rem 0.75rem', textAlign: 'center', fontWeight: 'bold', color: 'var(--accent)', verticalAlign: 'middle' }}>
                         {currentUser.accuracy_percentage}%
                       </td>
                       <td 
-                        style={{ padding: '1rem 0.75rem', textAlign: 'right', fontSize: '1.1rem', color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline' }}
+                        style={{ padding: '1rem 0.75rem', textAlign: 'right', fontSize: '1.1rem', color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline', verticalAlign: 'middle' }}
                         onClick={() => openBreakdown(currentUser)}
                         title={`View your points breakdown`}
                       >
@@ -191,6 +201,40 @@ export default function Leaderboard() {
           >
             Load More <ChevronDown size={16} />
           </button>
+        </div>
+      )}
+
+      {/* Info Modal Overlay */}
+      {showInfo && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(4px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+          <div style={{ background: 'var(--bg-secondary)', padding: '2rem', borderRadius: '16px', width: '90%', maxWidth: '500px', border: '1px solid rgba(255,255,255,0.1)', position: 'relative', maxHeight: '90vh', overflowY: 'auto' }}>
+            <button 
+              style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+              onClick={() => setShowInfo(false)}
+            >
+              <X size={20} />
+            </button>
+            <h3 style={{ marginBottom: '1.5rem', color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Info size={24} /> How Scoring Works
+            </h3>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', color: 'var(--text-main)', lineHeight: '1.6' }}>
+              <p><strong>Played:</strong> The total number of finished matches you have predicted.</p>
+              <p><strong>Matched:</strong> The number of matches where you earned at least 1 point (guessed the winner correctly).</p>
+              <p>
+                <strong>Accuracy:</strong> Your total points divided by the maximum possible points you could have earned from the matches you played.
+              </p>
+              
+              <div style={{ background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                <h4 style={{ marginBottom: '0.5rem', color: 'var(--secondary)' }}>Scoring Example</h4>
+                <ul style={{ margin: 0, paddingLeft: '1.2rem', color: 'var(--text-muted)', fontSize: '0.95rem' }}>
+                  <li><strong>Exact Score (3 pts):</strong> You predicted 2-1, and the final score was 2-1.</li>
+                  <li><strong>Correct Difference & Winner (2 pts):</strong> You predicted 2-0 (+2), and the final score was 3-1 (+2).</li>
+                  <li><strong>Correct Winner (1 pt):</strong> You predicted 1-0, and the final score was 3-0.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
