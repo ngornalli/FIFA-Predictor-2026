@@ -20,11 +20,8 @@ export default function Leaderboard() {
       const { data: authData } = await supabase.auth.getSession();
       setCurrentUserId(authData?.session?.user?.id);
 
-      // Fetch leaderboard
-      const { data, error } = await supabase
-        .from('users')
-        .select('id, username, total_points')
-        .order('total_points', { ascending: false });
+      // Fetch leaderboard using new Accuracy RPC
+      const { data, error } = await supabase.rpc('get_leaderboard_stats');
 
       if (!error && data) {
         // Assign rank
@@ -77,6 +74,9 @@ export default function Leaderboard() {
               <tr style={{ borderBottom: '1px solid var(--border-light)', backgroundColor: 'rgba(0,0,0,0.2)' }}>
                 <th style={{ padding: '1rem 0.75rem', width: '60px' }}>Rank</th>
                 <th style={{ padding: '1rem 0.75rem' }}>Player</th>
+                <th style={{ padding: '1rem 0.75rem', textAlign: 'center' }}>Played</th>
+                <th style={{ padding: '1rem 0.75rem', textAlign: 'center' }}>Matched</th>
+                <th style={{ padding: '1rem 0.75rem', textAlign: 'center' }}>Accuracy</th>
                 <th style={{ padding: '1rem 0.75rem', textAlign: 'right' }}>Total Points</th>
               </tr>
             </thead>
@@ -110,6 +110,15 @@ export default function Leaderboard() {
                         {user.username} {user.id === currentUserId && <span style={{ fontSize: '0.8rem', opacity: 0.8 }}>(You)</span>}
                       </Link>
                     </td>
+                    <td style={{ padding: '1rem 0.75rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                      {user.finished_predictions}
+                    </td>
+                    <td style={{ padding: '1rem 0.75rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                      {user.correct_predictions}
+                    </td>
+                    <td style={{ padding: '1rem 0.75rem', textAlign: 'center', fontWeight: 'bold', color: 'var(--accent)' }}>
+                      {user.accuracy_percentage}%
+                    </td>
                     <td 
                       style={{ padding: '1rem 0.75rem', textAlign: 'right', fontSize: '1.1rem', color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline' }}
                       onClick={() => openBreakdown(user)}
@@ -142,6 +151,15 @@ export default function Leaderboard() {
                         <Link to={`/profile/${currentUser.id}`} style={{ color: 'var(--secondary)', textDecoration: 'none' }}>
                           {currentUser.username} <span style={{ fontSize: '0.8rem', opacity: 0.8 }}>(You)</span>
                         </Link>
+                      </td>
+                      <td style={{ padding: '1rem 0.75rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                        {currentUser.finished_predictions}
+                      </td>
+                      <td style={{ padding: '1rem 0.75rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                        {currentUser.correct_predictions}
+                      </td>
+                      <td style={{ padding: '1rem 0.75rem', textAlign: 'center', fontWeight: 'bold', color: 'var(--accent)' }}>
+                        {currentUser.accuracy_percentage}%
                       </td>
                       <td 
                         style={{ padding: '1rem 0.75rem', textAlign: 'right', fontSize: '1.1rem', color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline' }}
@@ -187,6 +205,9 @@ export default function Leaderboard() {
             <h3 style={{ marginBottom: '0.25rem', color: 'var(--text-main)', paddingRight: '2rem' }}>
               {selectedUser.username}'s Points
             </h3>
+            <div style={{ color: 'var(--text-muted)', fontSize: '0.95rem', marginBottom: '0.5rem' }}>
+              Accuracy: <span style={{ color: 'var(--accent)', fontWeight: 'bold' }}>{selectedUser.accuracy_percentage}%</span> ({selectedUser.correct_predictions} matched / {selectedUser.finished_predictions} played)
+            </div>
             <div style={{ color: 'var(--secondary)', fontWeight: 'bold', marginBottom: '1.5rem', fontSize: '1.1rem' }}>
               Total: {selectedUser.total_points} Pts
             </div>

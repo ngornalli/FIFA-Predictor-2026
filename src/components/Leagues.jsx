@@ -253,20 +253,11 @@ function LeagueLeaderboard({ league, onBack, session }) {
 
   useEffect(() => {
     async function loadMembers() {
-      const { data, error } = await supabase
-        .from('league_members')
-        .select(`
-          users ( id, username, total_points )
-        `)
-        .eq('league_id', league.id);
+      const { data, error } = await supabase.rpc('get_league_leaderboard_stats', { target_league_id: league.id });
 
       if (!error && data) {
-        // Extract users and sort
-        let extractedUsers = data.map(d => d.users).filter(Boolean);
-        extractedUsers.sort((a, b) => b.total_points - a.total_points);
-        
         // Assign rank
-        const rankedData = extractedUsers.map((u, i) => ({ ...u, rank: i + 1 }));
+        const rankedData = data.map((u, i) => ({ ...u, rank: i + 1 }));
         setMembers(rankedData);
       }
       setLoading(false);
@@ -327,6 +318,9 @@ function LeagueLeaderboard({ league, onBack, session }) {
                   <tr style={{ borderBottom: '1px solid var(--border-light)', backgroundColor: 'rgba(0,0,0,0.2)' }}>
                     <th style={{ padding: '1rem 0.75rem', width: '60px' }}>Rank</th>
                     <th style={{ padding: '1rem 0.75rem' }}>Player</th>
+                    <th style={{ padding: '1rem 0.75rem', textAlign: 'center' }}>Played</th>
+                    <th style={{ padding: '1rem 0.75rem', textAlign: 'center' }}>Matched</th>
+                    <th style={{ padding: '1rem 0.75rem', textAlign: 'center' }}>Accuracy</th>
                     <th style={{ padding: '1rem 0.75rem', textAlign: 'right' }}>Total Points</th>
                   </tr>
                 </thead>
@@ -360,6 +354,15 @@ function LeagueLeaderboard({ league, onBack, session }) {
                               {user.username} {user.id === currentUserId && <span style={{ fontSize: '0.8rem', opacity: 0.8 }}>(You)</span>}
                             </Link>
                           </td>
+                          <td style={{ padding: '1rem 0.75rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                            {user.finished_predictions}
+                          </td>
+                          <td style={{ padding: '1rem 0.75rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                            {user.correct_predictions}
+                          </td>
+                          <td style={{ padding: '1rem 0.75rem', textAlign: 'center', fontWeight: 'bold', color: 'var(--accent)' }}>
+                            {user.accuracy_percentage}%
+                          </td>
                           <td 
                             style={{ padding: '1rem 0.75rem', textAlign: 'right', fontSize: '1.1rem', color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline' }}
                             onClick={() => openBreakdown(user)}
@@ -392,6 +395,15 @@ function LeagueLeaderboard({ league, onBack, session }) {
                               <Link to={`/profile/${currentUser.id}`} style={{ color: 'var(--secondary)', textDecoration: 'none' }}>
                                 {currentUser.username} <span style={{ fontSize: '0.8rem', opacity: 0.8 }}>(You)</span>
                               </Link>
+                            </td>
+                            <td style={{ padding: '1rem 0.75rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                              {currentUser.finished_predictions}
+                            </td>
+                            <td style={{ padding: '1rem 0.75rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                              {currentUser.correct_predictions}
+                            </td>
+                            <td style={{ padding: '1rem 0.75rem', textAlign: 'center', fontWeight: 'bold', color: 'var(--accent)' }}>
+                              {currentUser.accuracy_percentage}%
                             </td>
                             <td 
                               style={{ padding: '1rem 0.75rem', textAlign: 'right', fontSize: '1.1rem', color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline' }}
@@ -437,6 +449,9 @@ function LeagueLeaderboard({ league, onBack, session }) {
                 <h3 style={{ marginBottom: '0.25rem', color: 'var(--text-main)', paddingRight: '2rem' }}>
                   {selectedUser.username}'s Points
                 </h3>
+                <div style={{ color: 'var(--text-muted)', fontSize: '0.95rem', marginBottom: '0.5rem' }}>
+                  Accuracy: <span style={{ color: 'var(--accent)', fontWeight: 'bold' }}>{selectedUser.accuracy_percentage}%</span> ({selectedUser.correct_predictions} matched / {selectedUser.finished_predictions} played)
+                </div>
                 <div style={{ color: 'var(--secondary)', fontWeight: 'bold', marginBottom: '1.5rem', fontSize: '1.1rem' }}>
                   Total: {selectedUser.total_points} Pts
                 </div>
