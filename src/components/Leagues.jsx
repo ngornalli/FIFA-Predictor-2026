@@ -3,6 +3,24 @@ import { supabase } from '../lib/supabase';
 import { Users, Plus, KeyRound, Copy, Check, UsersRound, Award, Medal, ChevronDown, ChevronRight, Loader2, X, Trash2, ShieldAlert, Info } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
+const renderPlayerName = (user, currentUserId) => {
+  const hasRealName = user.first_name || user.last_name;
+  const mainName = hasRealName ? `${user.first_name || ''} ${user.last_name || ''}`.trim() : user.username;
+  const subName = hasRealName ? user.username : null;
+
+  return (
+    <Link to={`/profile/${user.id}`} style={{ color: user.id === currentUserId ? 'var(--secondary)' : 'inherit', textDecoration: 'none', display: 'flex', flexDirection: 'column' }}>
+      <span style={{ fontWeight: 600 }}>
+        {mainName}
+        {user.id === currentUserId && <span style={{ fontSize: '0.8rem', opacity: 0.8, marginLeft: '0.5rem' }}>(You)</span>}
+      </span>
+      {subName && (
+        <span style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 'normal', marginTop: '0.1rem' }}>@{subName}</span>
+      )}
+    </Link>
+  );
+};
+
 export default function Leagues({ session }) {
   const [leagues, setLeagues] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -15,7 +33,7 @@ export default function Leagues({ session }) {
   const [actionError, setActionError] = useState(null);
   
   // Info Modal State
-  const [showInfo, setShowInfo] = useState(false);
+  const [infoModal, setInfoModal] = useState(null);
 
   useEffect(() => {
     loadMyLeagues();
@@ -118,9 +136,6 @@ export default function Leagues({ session }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <Users size={28} color="var(--accent)" />
           <h2 className="text-primary-gradient" style={{ margin: 0 }}>Private Leagues</h2>
-          <button onClick={() => setShowInfo(true)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', padding: '0.25rem' }} title="How is this calculated?">
-            <Info size={20} />
-          </button>
         </div>
         
         <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -195,40 +210,55 @@ export default function Leagues({ session }) {
               league={league} 
               currentUserId={session.user.id} 
               onLeave={loadMyLeagues}
+              setInfoModal={setInfoModal}
             />
           ))}
         </div>
       )}
 
       {/* Info Modal Overlay */}
-      {showInfo && (
+      {infoModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(4px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
           <div style={{ background: 'var(--bg-secondary)', padding: '2rem', borderRadius: '16px', width: '90%', maxWidth: '500px', border: '1px solid rgba(255,255,255,0.1)', position: 'relative', maxHeight: '90vh', overflowY: 'auto' }}>
             <button 
               style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
-              onClick={() => setShowInfo(false)}
+              onClick={() => setInfoModal(null)}
             >
               <X size={20} />
             </button>
             <h3 style={{ marginBottom: '1.5rem', color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <Info size={24} /> How Scoring Works
+              <Info size={24} /> {infoModal}
             </h3>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', color: 'var(--text-main)', lineHeight: '1.6' }}>
-              <p><strong>Played:</strong> The total number of finished matches you have predicted.</p>
-              <p><strong>Matched:</strong> The number of matches where you earned at least 1 point (guessed the winner correctly).</p>
-              <p>
-                <strong>Accuracy:</strong> Your total points divided by the maximum possible points you could have earned from the matches you played.
-              </p>
-              
-              <div style={{ background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                <h4 style={{ marginBottom: '0.5rem', color: 'var(--secondary)' }}>Scoring Example</h4>
-                <ul style={{ margin: 0, paddingLeft: '1.2rem', color: 'var(--text-muted)', fontSize: '0.95rem' }}>
-                  <li><strong>Exact Score (3 pts):</strong> You predicted 2-1, and the final score was 2-1.</li>
-                  <li><strong>Correct Difference & Winner (2 pts):</strong> You predicted 2-0 (+2), and the final score was 3-1 (+2).</li>
-                  <li><strong>Correct Winner (1 pt):</strong> You predicted 1-0, and the final score was 3-0.</li>
-                </ul>
-              </div>
+              {infoModal === 'Played' && (
+                <p><strong>Played</strong> represents the total number of finished matches you have predicted. Matches that are still upcoming or in progress do not count toward this total.</p>
+              )}
+              {infoModal === 'Matched' && (
+                <p><strong>Matched</strong> represents the number of matches where you earned at least 1 point. This means you successfully guessed the correct winner or a draw.</p>
+              )}
+              {infoModal === 'Accuracy' && (
+                <>
+                  <p><strong>Accuracy</strong> is calculated as your total points divided by the maximum possible points you could have earned from the matches you played.</p>
+                  <div style={{ background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                    <h4 style={{ marginBottom: '0.5rem', color: 'var(--secondary)' }}>Example</h4>
+                    <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.95rem' }}>If you played 10 matches, the maximum points you could earn is 30 (3 pts per match). If you earned 15 points, your accuracy is <strong>50%</strong> (15 / 30).</p>
+                  </div>
+                </>
+              )}
+              {infoModal === 'Total Points' && (
+                <>
+                  <p><strong>Total Points</strong> are the sum of points you've earned from all your predictions.</p>
+                  <div style={{ background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                    <h4 style={{ marginBottom: '0.5rem', color: 'var(--secondary)' }}>Scoring Rules</h4>
+                    <ul style={{ margin: 0, paddingLeft: '1.2rem', color: 'var(--text-muted)', fontSize: '0.95rem' }}>
+                      <li style={{ marginBottom: '0.5rem' }}><strong>Exact Score (3 pts):</strong> You predicted 2-1, and the final score was 2-1.</li>
+                      <li style={{ marginBottom: '0.5rem' }}><strong>Correct Difference & Winner (2 pts):</strong> You predicted 2-0 (+2), and the final score was 3-1 (+2).</li>
+                      <li><strong>Correct Winner (1 pt):</strong> You predicted 1-0, and the final score was 3-0.</li>
+                    </ul>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -237,7 +267,7 @@ export default function Leagues({ session }) {
   );
 }
 
-function LeagueLeaderboard({ league, currentUserId, onLeave }) {
+function LeagueLeaderboard({ league, currentUserId, onLeave, setInfoModal }) {
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(false);
@@ -392,10 +422,26 @@ function LeagueLeaderboard({ league, currentUserId, onLeave }) {
                   <tr style={{ borderBottom: '1px solid var(--border-light)', backgroundColor: 'rgba(0,0,0,0.2)' }}>
                     <th style={{ padding: '1rem 0.75rem', width: '60px' }}>Rank</th>
                     <th style={{ padding: '1rem 0.75rem' }}>Player</th>
-                    <th style={{ padding: '1rem 0.75rem', textAlign: 'center', verticalAlign: 'middle' }}>Played</th>
-                    <th style={{ padding: '1rem 0.75rem', textAlign: 'center', verticalAlign: 'middle' }}>Matched</th>
-                    <th style={{ padding: '1rem 0.75rem', textAlign: 'center', verticalAlign: 'middle' }}>Accuracy</th>
-                    <th style={{ padding: '1rem 0.75rem', textAlign: 'right', verticalAlign: 'middle' }}>Total Points</th>
+                    <th style={{ padding: '1rem 0.75rem', textAlign: 'center', verticalAlign: 'middle' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem' }}>
+                        Played <Info size={14} style={{ cursor: 'pointer', color: 'var(--text-muted)' }} onClick={() => setInfoModal('Played')} />
+                      </div>
+                    </th>
+                    <th style={{ padding: '1rem 0.75rem', textAlign: 'center', verticalAlign: 'middle' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem' }}>
+                        Matched <Info size={14} style={{ cursor: 'pointer', color: 'var(--text-muted)' }} onClick={() => setInfoModal('Matched')} />
+                      </div>
+                    </th>
+                    <th style={{ padding: '1rem 0.75rem', textAlign: 'center', verticalAlign: 'middle' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem' }}>
+                        Accuracy <Info size={14} style={{ cursor: 'pointer', color: 'var(--text-muted)' }} onClick={() => setInfoModal('Accuracy')} />
+                      </div>
+                    </th>
+                    <th style={{ padding: '1rem 0.75rem', textAlign: 'right', verticalAlign: 'middle' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.35rem' }}>
+                        Total Points <Info size={14} style={{ cursor: 'pointer', color: 'var(--text-muted)' }} onClick={() => setInfoModal('Total Points')} />
+                      </div>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -423,14 +469,8 @@ function LeagueLeaderboard({ league, currentUserId, onLeave }) {
                             {user.rank === 3 && <Medal size={20} color="#b45309" style={{ verticalAlign: 'middle' }} />}
                             {user.rank > 3 && <span style={{ paddingLeft: '4px' }}>{user.rank}</span>}
                           </td>
-                          <td style={{ padding: '1rem 0.75rem', fontWeight: 600 }}>
-                            <Link to={`/profile/${user.id}`} style={{ color: user.id === currentUserId ? 'var(--secondary)' : 'inherit', textDecoration: 'none', display: 'flex', flexDirection: 'column' }}>
-                              <span>
-                                {user.first_name || user.last_name ? `${user.first_name || ''} ${user.last_name || ''}`.trim() : user.username}
-                                {user.id === currentUserId && <span style={{ fontSize: '0.8rem', opacity: 0.8, marginLeft: '0.5rem' }}>(You)</span>}
-                              </span>
-                              {(user.first_name || user.last_name) && <span style={{ fontSize: '0.75rem', opacity: 0.6, fontWeight: 'normal', marginTop: '0.1rem' }}>({user.username})</span>}
-                            </Link>
+                          <td style={{ padding: '1rem 0.75rem', verticalAlign: 'middle' }}>
+                            {renderPlayerName(user, currentUserId)}
                           </td>
                           <td style={{ padding: '1rem 0.75rem', textAlign: 'center', color: 'var(--text-muted)', verticalAlign: 'middle' }}>
                             {user.finished_predictions}
@@ -469,14 +509,8 @@ function LeagueLeaderboard({ league, currentUserId, onLeave }) {
                             <td style={{ padding: '1rem 0.75rem', fontWeight: 'bold', verticalAlign: 'middle' }}>
                               <span style={{ paddingLeft: '4px' }}>{currentUser.rank}</span>
                             </td>
-                            <td style={{ padding: '1rem 0.75rem', fontWeight: 600 }}>
-                              <Link to={`/profile/${currentUser.id}`} style={{ color: 'var(--secondary)', textDecoration: 'none', display: 'flex', flexDirection: 'column' }}>
-                                <span>
-                                  {currentUser.first_name || currentUser.last_name ? `${currentUser.first_name || ''} ${currentUser.last_name || ''}`.trim() : currentUser.username}
-                                  <span style={{ fontSize: '0.8rem', opacity: 0.8, marginLeft: '0.5rem' }}>(You)</span>
-                                </span>
-                                {(currentUser.first_name || currentUser.last_name) && <span style={{ fontSize: '0.75rem', opacity: 0.6, fontWeight: 'normal', marginTop: '0.1rem' }}>({currentUser.username})</span>}
-                              </Link>
+                            <td style={{ padding: '1rem 0.75rem', verticalAlign: 'middle' }}>
+                              {renderPlayerName(currentUser, currentUserId)}
                             </td>
                             <td style={{ padding: '1rem 0.75rem', textAlign: 'center', color: 'var(--text-muted)', verticalAlign: 'middle' }}>
                               {currentUser.finished_predictions}
