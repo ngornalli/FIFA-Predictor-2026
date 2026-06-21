@@ -1,255 +1,217 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { Users, Plus, Hash, LogIn, ChevronLeft, Award, Medal, ChevronDown, X, Loader2 } from 'lucide-react';
+import { Users, Plus, KeyRound, Copy, Check, UsersRound, Award, Medal, ChevronDown, ChevronRight, Loader2, X, Trash2, ShieldAlert } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export default function Leagues({ session }) {
   const [leagues, setLeagues] = useState([]);
-  const [publicLeagues, setPublicLeagues] = useState([]);
-  const [activeLeague, setActiveLeague] = useState(null);
   const [loading, setLoading] = useState(true);
+  
+  // Create / Join State
+  const [isCreating, setIsCreating] = useState(false);
+  const [isJoining, setIsJoining] = useState(false);
+  const [leagueName, setLeagueName] = useState('');
+  const [inviteCode, setInviteCode] = useState('');
+  const [actionError, setActionError] = useState(null);
 
-  // Forms state
-  const [newLeagueName, setNewLeagueName] = useState('');
-  const [isPublic, setIsPublic] = useState(false);
-  const [joinCode, setJoinCode] = useState('');
-  const [actionLoading, setActionLoading] = useState(false);
+  useEffect(() => {
+    loadMyLeagues();
+  }, [session]);
 
-  const fetchLeagues = async () => {
+  const loadMyLeagues = async () => {
     setLoading(true);
-    // Fetch leagues the user is a member of
+    // Get all leagues where the user is a member
     const { data, error } = await supabase
       .from('league_members')
       .select(`
-        league_id,
-        leagues ( id, name, invite_code, owner_id, is_public )
+        leagues ( id, name, invite_code, owner_id, created_at )
       `)
       .eq('user_id', session.user.id);
 
-    let myLeagueIds = [];
-    if (!error && data) {
-      const myLeagues = data.map(d => d.leagues).filter(Boolean);
-      setLeagues(myLeagues);
-      myLeagueIds = myLeagues.map(l => l.id);
-    }
-
-    // Fetch all public leagues
-    const { data: pubData, error: pubError } = await supabase
-      .from('leagues')
-      .select('id, name, owner_id, invite_code, is_public')
-      .eq('is_public', true);
-
-    if (!pubError && pubData) {
-      // Filter out leagues the user is already in
-      setPublicLeagues(pubData.filter(l => !myLeagueIds.includes(l.id)));
+    if (error) {
+      console.error('Error fetching leagues:', error);
+    } else if (data) {
+      // Extract the league objects from the join
+      setLeagues(data.map(d => d.leagues).filter(Boolean));
     }
     setLoading(false);
   };
 
-  useEffect(() => {
-    fetchLeagues();
-  }, [session]);
-
   const handleCreateLeague = async (e) => {
     e.preventDefault();
-    if (!newLeagueName.trim()) return;
-    setActionLoading(true);
+    setActionError(null);
+    if (!leagueName.trim()) return;
 
-    const { data, error } = await supabase
+    // 1. Create the league
+    const { data: newLeague, error: createError } = await supabase
       .from('leagues')
-      .insert({ name: newLeagueName, owner_id: session.user.id, is_public: isPublic })
+      .insert([{ name: leagueName.trim(), owner_id: session.user.id }])
       .select()
       .single();
 
-    if (error) {
-      alert('Error creating league: ' + error.message);
-    } else {
-      // Auto join the league
-      await supabase.from('league_members').insert({ league_id: data.id, user_id: session.user.id });
-      setNewLeagueName('');
-      fetchLeagues();
+    if (createError) {
+      setActionError(createError.message);
+      return;
     }
-    setActionLoading(false);
+
+    // 2. Add creator as a member
+    const { error: memberError } = await supabase
+      .from('league_members')
+      .insert([{ league_id: newLeague.id, user_id: session.user.id }]);
+
+    if (memberError) {
+      setActionError(memberError.message);
+      return;
+    }
+
+    setLeagueName('');
+    setIsCreating(false);
+    loadMyLeagues();
   };
 
   const handleJoinLeague = async (e) => {
     e.preventDefault();
-    if (!joinCode.trim()) return;
-    setActionLoading(true);
+    setActionError(null);
+    if (!inviteCode.trim()) return;
 
-    // Find league by code
-    const { data: leagueData, error: leagueError } = await supabase
+    // 1. Find the league by code
+    const { data: league, error: findError } = await supabase
       .from('leagues')
       .select('id, name')
-      .eq('invite_code', joinCode.trim())
+      .eq('invite_code', inviteCode.trim())
       .single();
 
-    if (leagueError || !leagueData) {
-      alert('Invalid invite code');
-      setActionLoading(false);
+    if (findError || !league) {
+      setActionError("Invalid invite code. Please check and try again.");
       return;
     }
 
-    // Join it
+    // 2. Add user as member
     const { error: joinError } = await supabase
       .from('league_members')
-      .insert({ league_id: leagueData.id, user_id: session.user.id });
+      .insert([{ league_id: league.id, user_id: session.user.id }]);
 
     if (joinError) {
-      alert('You are already in this league or an error occurred.');
-    } else {
-      setJoinCode('');
-      fetchLeagues();
+      if (joinError.code === '23505') { // Unique violation
+        setActionError("You are already in this league.");
+      } else {
+        setActionError(joinError.message);
+      }
+      return;
     }
-    setActionLoading(false);
+
+    setInviteCode('');
+    setIsJoining(false);
+    loadMyLeagues();
   };
 
-  const handleJoinPublicLeague = async (leagueId) => {
-    setActionLoading(true);
-    const { error: joinError } = await supabase
-      .from('league_members')
-      .insert({ league_id: leagueId, user_id: session.user.id });
-
-    if (joinError) {
-      alert('Error joining public league.');
-    } else {
-      fetchLeagues();
-    }
-    setActionLoading(false);
-  };
-
-  if (activeLeague) {
-    return <LeagueLeaderboard league={activeLeague} onBack={() => setActiveLeague(null)} session={session} />;
-  }
+  if (loading) return <p className="text-muted">Loading your leagues...</p>;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-        <Users size={28} color="var(--accent)" />
-        <h2 className="text-primary-gradient">Private Leagues</h2>
+      
+      {/* Header & Actions */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <Users size={28} color="var(--accent)" />
+          <h2 className="text-primary-gradient">Private Leagues</h2>
+        </div>
+        
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button 
+            className={`btn ${isJoining ? 'btn-primary' : 'btn-outline'}`}
+            onClick={() => { setIsJoining(true); setIsCreating(false); setActionError(null); }}
+          >
+            <KeyRound size={18} /> Join with Code
+          </button>
+          <button 
+            className={`btn ${isCreating ? 'btn-primary' : 'btn-outline'}`}
+            onClick={() => { setIsCreating(true); setIsJoining(false); setActionError(null); }}
+          >
+            <Plus size={18} /> Create League
+          </button>
+        </div>
       </div>
 
-      {loading ? (
-        <p className="text-muted">Loading your leagues...</p>
-      ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
-          {leagues.map(league => (
-            <div 
-              key={league.id} 
-              className="glass-panel" 
-              style={{ cursor: 'pointer', transition: 'transform 0.2s', padding: '1.5rem' }}
-              onClick={() => setActiveLeague(league)}
-              onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-4px)'}
-              onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
-            >
-              <h3 style={{ fontSize: '1.4rem', marginBottom: '0.5rem' }}>{league.name}</h3>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Hash size={14} /> Invite Code: <strong style={{ color: 'var(--text-main)' }}>{league.invite_code}</strong>
-              </p>
-            </div>
-          ))}
-        </div>
-      )}
+      {/* Action Forms */}
+      {(isCreating || isJoining) && (
+        <div className="glass-panel" style={{ position: 'relative' }}>
+          <button 
+            style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+            onClick={() => { setIsCreating(false); setIsJoining(false); }}
+          >
+            <X size={20} />
+          </button>
 
-      <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
-        {/* Create League Form */}
-        <div className="glass-panel" style={{ flex: 1, minWidth: '300px' }}>
-          <h3 style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Plus size={20} /> Create a League
+          <h3 style={{ marginBottom: '1rem' }}>
+            {isCreating ? 'Create a New League' : 'Join an Existing League'}
           </h3>
-          <form onSubmit={handleCreateLeague} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
+          
+          {actionError && (
+            <div style={{ color: '#ef4444', marginBottom: '1rem', fontSize: '0.9rem', padding: '0.5rem', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '4px' }}>
+              {actionError}
+            </div>
+          )}
+
+          <form onSubmit={isCreating ? handleCreateLeague : handleJoinLeague} style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end' }}>
+            <div style={{ flex: 1 }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                {isCreating ? 'League Name' : 'Invite Code'}
+              </label>
               <input 
                 type="text" 
                 className="input-field" 
-                placeholder="League Name" 
-                value={newLeagueName}
-                onChange={e => setNewLeagueName(e.target.value)}
-                disabled={actionLoading}
-                required
-                style={{ flex: 1 }}
+                placeholder={isCreating ? "e.g. The Office Pool" : "e.g. a1b2c3d4"}
+                value={isCreating ? leagueName : inviteCode}
+                onChange={(e) => isCreating ? setLeagueName(e.target.value) : setInviteCode(e.target.value)}
+                autoFocus
               />
-              <button type="submit" className="btn btn-primary" disabled={actionLoading}>Create</button>
             </div>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-              <input 
-                type="checkbox" 
-                checked={isPublic} 
-                onChange={(e) => setIsPublic(e.target.checked)} 
-                disabled={actionLoading}
-              />
-              Make this league Public (anyone can join)
-            </label>
+            <button type="submit" className="btn btn-primary">
+              {isCreating ? 'Create' : 'Join'}
+            </button>
           </form>
         </div>
+      )}
 
-        {/* Join League Form */}
-        <div className="glass-panel" style={{ flex: 1, minWidth: '300px' }}>
-          <h3 style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <LogIn size={20} /> Join a League
-          </h3>
-          <form onSubmit={handleJoinLeague} style={{ display: 'flex', gap: '0.5rem' }}>
-            <input 
-              type="text" 
-              className="input-field" 
-              placeholder="Invite Code (e.g. 8a3f9b2)" 
-              value={joinCode}
-              onChange={e => setJoinCode(e.target.value)}
-              disabled={actionLoading}
-              required
+      {/* Leagues List */}
+      {leagues.length === 0 ? (
+        <div className="glass-panel" style={{ textAlign: 'center', padding: '4rem 2rem' }}>
+          <UsersRound size={48} color="var(--text-muted)" style={{ marginBottom: '1rem', opacity: 0.5 }} />
+          <h3 style={{ marginBottom: '0.5rem' }}>No Leagues Yet</h3>
+          <p style={{ color: 'var(--text-muted)' }}>Create a private league to compete directly with your friends, or join one if you have an invite code.</p>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          {leagues.map(league => (
+            <LeagueLeaderboard 
+              key={league.id} 
+              league={league} 
+              currentUserId={session.user.id} 
+              onLeave={loadMyLeagues}
             />
-            <button type="submit" className="btn btn-primary" disabled={actionLoading}>Join</button>
-          </form>
+          ))}
         </div>
-      </div>
-
-      {/* Public Leagues Section */}
-      <div style={{ marginTop: '1rem' }}>
-        <h3 style={{ fontSize: '1.4rem', marginBottom: '1rem', color: 'var(--text-main)' }}>Public Leagues</h3>
-        {loading ? (
-           <p className="text-muted">Loading public leagues...</p>
-        ) : publicLeagues.length === 0 ? (
-           <p className="text-muted glass-panel">No public leagues available to join right now.</p>
-        ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
-            {publicLeagues.map(league => (
-              <div 
-                key={league.id} 
-                className="glass-panel" 
-                style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1.5rem' }}
-              >
-                <div>
-                  <h3 style={{ fontSize: '1.3rem', marginBottom: '0.25rem' }}>{league.name}</h3>
-                  <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Public League</p>
-                </div>
-                <button 
-                  className="btn btn-primary" 
-                  onClick={() => handleJoinPublicLeague(league.id)}
-                  disabled={actionLoading}
-                  style={{ alignSelf: 'flex-start' }}
-                >
-                  Join League
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
+      )}
     </div>
   );
 }
 
-function LeagueLeaderboard({ league, onBack, session }) {
+function LeagueLeaderboard({ league, currentUserId, onLeave }) {
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [displayLimit, setDisplayLimit] = useState(10);
-  const currentUserId = session?.user?.id;
+  const [expanded, setExpanded] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   // Breakdown Modal State
   const [selectedUser, setSelectedUser] = useState(null);
   const [breakdownLoading, setBreakdownLoading] = useState(false);
   const [userPredictions, setUserPredictions] = useState([]);
+
+  // Leave League State
+  const [isLeaving, setIsLeaving] = useState(false);
+
+  const isOwner = league.owner_id === currentUserId;
 
   useEffect(() => {
     async function loadMembers() {
@@ -262,8 +224,37 @@ function LeagueLeaderboard({ league, onBack, session }) {
       }
       setLoading(false);
     }
-    loadMembers();
-  }, [league.id]);
+    
+    if (expanded) {
+      loadMembers();
+    }
+  }, [expanded, league.id]);
+
+  const copyCode = (e) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(league.invite_code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleLeave = async (e) => {
+    e.stopPropagation();
+    if (!window.confirm(isOwner 
+        ? "You are the owner. Leaving will DELETE the league for everyone. Are you sure?" 
+        : "Are you sure you want to leave this league?")) return;
+    
+    setIsLeaving(true);
+    
+    if (isOwner) {
+      await supabase.from('leagues').delete().eq('id', league.id);
+    } else {
+      await supabase.from('league_members').delete()
+        .eq('league_id', league.id)
+        .eq('user_id', currentUserId);
+    }
+    
+    onLeave(); // trigger parent refresh
+  };
 
   const openBreakdown = async (user) => {
     setSelectedUser(user);
@@ -285,34 +276,77 @@ function LeagueLeaderboard({ league, onBack, session }) {
     setBreakdownLoading(false);
   };
 
-  const displayedMembers = members.slice(0, displayLimit);
   const currentUserIndex = members.findIndex(u => u.id === currentUserId);
   const currentUser = currentUserIndex !== -1 ? members[currentUserIndex] : null;
-  const isCurrentUserHidden = currentUserIndex >= displayLimit;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', position: 'relative' }}>
-      <button 
-        className="btn btn-outline" 
-        onClick={onBack}
-        style={{ alignSelf: 'flex-start', padding: '0.5rem 1rem' }}
+    <div className="glass-panel" style={{ padding: 0, overflow: 'hidden' }}>
+      {/* Accordion Header */}
+      <div 
+        style={{ 
+          padding: '1.5rem', 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center',
+          cursor: 'pointer',
+          background: expanded ? 'rgba(255,255,255,0.05)' : 'transparent',
+          transition: 'background 0.2s',
+          flexWrap: 'wrap',
+          gap: '1rem'
+        }}
+        onClick={() => setExpanded(!expanded)}
       >
-        <ChevronLeft size={16} /> Back to Leagues
-      </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          {expanded ? <ChevronDown size={24} color="var(--accent)"/> : <ChevronRight size={24} color="var(--text-muted)"/>}
+          <h3 style={{ margin: 0, fontSize: '1.2rem', color: expanded ? 'var(--text-main)' : 'var(--text-muted)' }}>
+            {league.name}
+            {isOwner && <span style={{ fontSize: '0.75rem', background: 'var(--secondary)', color: 'var(--bg-main)', padding: '2px 6px', borderRadius: '4px', marginLeft: '0.75rem', fontWeight: 'bold' }}>OWNER</span>}
+          </h3>
+        </div>
 
-      <div style={{ marginBottom: '1rem' }}>
-        <h2 className="text-primary-gradient">{league.name}</h2>
-        <p style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}>
-          Share this invite code with friends: <strong style={{ color: 'var(--text-main)', background: 'rgba(255,255,255,0.1)', padding: '0.25rem 0.5rem', borderRadius: '4px' }}>{league.invite_code}</strong>
-        </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          {/* Invite Code Badge */}
+          <div 
+            style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '0.5rem', 
+              background: 'rgba(0,0,0,0.3)', 
+              padding: '0.4rem 0.75rem', 
+              borderRadius: '8px',
+              border: '1px solid rgba(255,255,255,0.1)'
+            }}
+            onClick={(e) => e.stopPropagation()} // Prevent accordion toggle when interacting with badge
+          >
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Code:</span>
+            <span style={{ fontFamily: 'monospace', fontWeight: 'bold', letterSpacing: '1px' }}>{league.invite_code}</span>
+            <button 
+              onClick={copyCode}
+              style={{ background: 'none', border: 'none', color: copied ? '#10b981' : 'var(--accent)', cursor: 'pointer', padding: 0, display: 'flex' }}
+              title="Copy Invite Code"
+            >
+              {copied ? <Check size={16} /> : <Copy size={16} />}
+            </button>
+          </div>
+          
+          <button 
+            onClick={handleLeave}
+            disabled={isLeaving}
+            style={{ background: 'none', border: 'none', color: isOwner ? '#ef4444' : 'var(--text-muted)', cursor: 'pointer', padding: '0.4rem' }}
+            title={isOwner ? "Delete League" : "Leave League"}
+          >
+            {isOwner ? <ShieldAlert size={18} /> : <Trash2 size={18} />}
+          </button>
+        </div>
       </div>
 
-      {loading ? (
-        <p className="text-muted">Loading leaderboard...</p>
-      ) : (
-        <>
-          <div className="glass-panel" style={{ padding: 0, overflow: 'hidden' }}>
-            <div style={{ overflowX: 'auto', width: '100%' }}>
+      {/* Accordion Content (Leaderboard) */}
+      {expanded && (
+        <div style={{ padding: '0 1.5rem 1.5rem 1.5rem', borderTop: '1px solid var(--border-light)' }}>
+          {loading ? (
+            <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem 0' }}>Loading rankings...</p>
+          ) : (
+            <div style={{ overflowX: 'auto', marginTop: '1rem', background: 'rgba(0,0,0,0.15)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', whiteSpace: 'nowrap' }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid var(--border-light)', backgroundColor: 'rgba(0,0,0,0.2)' }}>
@@ -327,18 +361,18 @@ function LeagueLeaderboard({ league, onBack, session }) {
                 <tbody>
                   {members.length === 0 ? (
                     <tr>
-                      <td colSpan="3" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                        No members yet.
+                      <td colSpan="6" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                        Nobody is here yet! Share the invite code to get started.
                       </td>
                     </tr>
                   ) : (
                     <>
-                      {displayedMembers.map((user) => (
+                      {/* Top 5 Displayed */}
+                      {members.slice(0, 5).map((user) => (
                         <tr 
                           key={user.id} 
                           style={{ 
-                            borderBottom: '1px solid rgba(255,255,255,0.05)', 
-                            transition: 'background 0.2s',
+                            borderBottom: '1px solid rgba(255,255,255,0.05)',
                             backgroundColor: user.id === currentUserId ? 'rgba(56, 189, 248, 0.15)' : 'transparent',
                             borderLeft: user.id === currentUserId ? '4px solid var(--secondary)' : '4px solid transparent'
                           }}
@@ -351,7 +385,9 @@ function LeagueLeaderboard({ league, onBack, session }) {
                           </td>
                           <td style={{ padding: '1rem 0.75rem', fontWeight: 600 }}>
                             <Link to={`/profile/${user.id}`} style={{ color: user.id === currentUserId ? 'var(--secondary)' : 'inherit', textDecoration: 'none' }}>
-                              {user.username} {user.id === currentUserId && <span style={{ fontSize: '0.8rem', opacity: 0.8 }}>(You)</span>}
+                              {user.first_name || user.last_name ? `${user.first_name || ''} ${user.last_name || ''}`.trim() : user.username}
+                              {(user.first_name || user.last_name) && <span style={{ fontSize: '0.75rem', opacity: 0.6, marginLeft: '0.5rem', fontWeight: 'normal' }}>({user.username})</span>}
+                              {user.id === currentUserId && <span style={{ fontSize: '0.8rem', opacity: 0.8, marginLeft: '0.5rem' }}>(You)</span>}
                             </Link>
                           </td>
                           <td style={{ padding: '1rem 0.75rem', textAlign: 'center', color: 'var(--text-muted)' }}>
@@ -373,11 +409,11 @@ function LeagueLeaderboard({ league, onBack, session }) {
                         </tr>
                       ))}
 
-                      {/* Sticky Current User Row */}
-                      {isCurrentUserHidden && currentUser && (
+                      {/* Current User Row (if they are below rank 5) */}
+                      {currentUserIndex >= 5 && currentUser && (
                         <>
                           <tr style={{ backgroundColor: 'rgba(0,0,0,0.3)' }}>
-                            <td colSpan="3" style={{ padding: '0.5rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem', letterSpacing: '2px' }}>
+                            <td colSpan="6" style={{ padding: '0.5rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem', letterSpacing: '2px' }}>
                               •••
                             </td>
                           </tr>
@@ -393,7 +429,9 @@ function LeagueLeaderboard({ league, onBack, session }) {
                             </td>
                             <td style={{ padding: '1rem 0.75rem', fontWeight: 600 }}>
                               <Link to={`/profile/${currentUser.id}`} style={{ color: 'var(--secondary)', textDecoration: 'none' }}>
-                                {currentUser.username} <span style={{ fontSize: '0.8rem', opacity: 0.8 }}>(You)</span>
+                                {currentUser.first_name || currentUser.last_name ? `${currentUser.first_name || ''} ${currentUser.last_name || ''}`.trim() : currentUser.username}
+                                {(currentUser.first_name || currentUser.last_name) && <span style={{ fontSize: '0.75rem', opacity: 0.6, marginLeft: '0.5rem', fontWeight: 'normal' }}>({currentUser.username})</span>}
+                                <span style={{ fontSize: '0.8rem', opacity: 0.8, marginLeft: '0.5rem' }}>(You)</span>
                               </Link>
                             </td>
                             <td style={{ padding: '1rem 0.75rem', textAlign: 'center', color: 'var(--text-muted)' }}>
@@ -420,67 +458,55 @@ function LeagueLeaderboard({ league, onBack, session }) {
                 </tbody>
               </table>
             </div>
-          </div>
-
-          {members.length > displayLimit && (
-            <div style={{ display: 'flex', justifyContent: 'center', marginTop: '0.5rem' }}>
-              <button 
-                className="btn btn-outline"
-                style={{ padding: '0.75rem 2rem', fontSize: '0.95rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}
-                onClick={() => setDisplayLimit(prev => prev + 10)}
-              >
-                Load More <ChevronDown size={16} />
-              </button>
-            </div>
           )}
+        </div>
+      )}
 
-          {/* Breakdown Modal Overlay */}
-          {selectedUser && (
-            <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(4px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-              <div style={{ background: 'var(--bg-secondary)', padding: '1.5rem', borderRadius: '16px', width: '90%', maxWidth: '400px', border: '1px solid rgba(255,255,255,0.1)', position: 'relative', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
-                
-                <div 
-                  style={{ position: 'absolute', top: '1rem', right: '1rem', cursor: 'pointer', color: 'var(--text-muted)' }}
-                  onClick={() => setSelectedUser(null)}
-                >
-                  <X size={20} />
-                </div>
+      {/* Breakdown Modal Overlay */}
+      {selectedUser && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(4px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+          <div style={{ background: 'var(--bg-secondary)', padding: '1.5rem', borderRadius: '16px', width: '90%', maxWidth: '400px', border: '1px solid rgba(255,255,255,0.1)', position: 'relative', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
+            
+            <div 
+              style={{ position: 'absolute', top: '1rem', right: '1rem', cursor: 'pointer', color: 'var(--text-muted)' }}
+              onClick={() => setSelectedUser(null)}
+            >
+              <X size={20} />
+            </div>
 
-                <h3 style={{ marginBottom: '0.25rem', color: 'var(--text-main)', paddingRight: '2rem' }}>
-                  {selectedUser.username}'s Points
-                </h3>
-                <div style={{ color: 'var(--text-muted)', fontSize: '0.95rem', marginBottom: '0.5rem' }}>
-                  Accuracy: <span style={{ color: 'var(--accent)', fontWeight: 'bold' }}>{selectedUser.accuracy_percentage}%</span> ({selectedUser.correct_predictions} matched / {selectedUser.finished_predictions} played)
-                </div>
-                <div style={{ color: 'var(--secondary)', fontWeight: 'bold', marginBottom: '1.5rem', fontSize: '1.1rem' }}>
-                  Total: {selectedUser.total_points} Pts
-                </div>
+            <h3 style={{ marginBottom: '0.25rem', color: 'var(--text-main)', paddingRight: '2rem' }}>
+              {selectedUser.first_name || selectedUser.last_name ? `${selectedUser.first_name || ''} ${selectedUser.last_name || ''}`.trim() : selectedUser.username}'s Points
+            </h3>
+            <div style={{ color: 'var(--text-muted)', fontSize: '0.95rem', marginBottom: '0.5rem' }}>
+              Accuracy: <span style={{ color: 'var(--accent)', fontWeight: 'bold' }}>{selectedUser.accuracy_percentage}%</span> ({selectedUser.correct_predictions} matched / {selectedUser.finished_predictions} played)
+            </div>
+            <div style={{ color: 'var(--secondary)', fontWeight: 'bold', marginBottom: '1.5rem', fontSize: '1.1rem' }}>
+              Total: {selectedUser.total_points} Pts
+            </div>
 
-                <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', paddingRight: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  {breakdownLoading ? (
-                    <div style={{ display: 'flex', justifyContent: 'center', padding: '2rem 0', color: 'var(--text-muted)' }}>
-                      <Loader2 size={24} className="loading-spinner" />
+            <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', paddingRight: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {breakdownLoading ? (
+                <div style={{ display: 'flex', justifyContent: 'center', padding: '2rem 0', color: 'var(--text-muted)' }}>
+                  <Loader2 size={24} className="loading-spinner" />
+                </div>
+              ) : userPredictions.length === 0 ? (
+                <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem 0' }}>No finished matches found.</p>
+              ) : (
+                userPredictions.map((pred, idx) => (
+                  <div key={idx} style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '8px', padding: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid rgba(255,255,255,0.05)' }}>
+                    <div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.25rem' }}>{pred.matches.stage}</div>
+                      <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{pred.matches.home_team} vs {pred.matches.away_team}</div>
                     </div>
-                  ) : userPredictions.length === 0 ? (
-                    <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem 0' }}>No finished matches found.</p>
-                  ) : (
-                    userPredictions.map((pred, idx) => (
-                      <div key={idx} style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '8px', padding: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid rgba(255,255,255,0.05)' }}>
-                        <div>
-                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.25rem' }}>{pred.matches.stage}</div>
-                          <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{pred.matches.home_team} vs {pred.matches.away_team}</div>
-                        </div>
-                        <div style={{ fontWeight: 'bold', color: pred.points > 0 ? 'var(--secondary)' : 'var(--text-muted)', fontSize: '1.1rem' }}>
-                          +{pred.points || 0}
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
+                    <div style={{ fontWeight: 'bold', color: pred.points > 0 ? 'var(--secondary)' : 'var(--text-muted)', fontSize: '1.1rem' }}>
+                      +{pred.points || 0}
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
-          )}
-        </>
+          </div>
+        </div>
       )}
     </div>
   );

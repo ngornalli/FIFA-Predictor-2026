@@ -83,7 +83,7 @@ export default function Leaderboard() {
           <tbody>
             {users.length === 0 ? (
               <tr>
-                <td colSpan="3" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                <td colSpan="6" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                   No players found. Check back once matches begin!
                 </td>
               </tr>
@@ -107,7 +107,9 @@ export default function Leaderboard() {
                     </td>
                     <td style={{ padding: '1rem 0.75rem', fontWeight: 600 }}>
                       <Link to={`/profile/${user.id}`} style={{ color: user.id === currentUserId ? 'var(--secondary)' : 'inherit', textDecoration: 'none' }}>
-                        {user.username} {user.id === currentUserId && <span style={{ fontSize: '0.8rem', opacity: 0.8 }}>(You)</span>}
+                        {user.first_name || user.last_name ? `${user.first_name || ''} ${user.last_name || ''}`.trim() : user.username}
+                        {(user.first_name || user.last_name) && <span style={{ fontSize: '0.75rem', opacity: 0.6, marginLeft: '0.5rem', fontWeight: 'normal' }}>({user.username})</span>}
+                        {user.id === currentUserId && <span style={{ fontSize: '0.8rem', opacity: 0.8, marginLeft: '0.5rem' }}>(You)</span>}
                       </Link>
                     </td>
                     <td style={{ padding: '1rem 0.75rem', textAlign: 'center', color: 'var(--text-muted)' }}>
@@ -133,7 +135,7 @@ export default function Leaderboard() {
                 {isCurrentUserHidden && currentUser && (
                   <>
                     <tr style={{ backgroundColor: 'rgba(0,0,0,0.3)' }}>
-                      <td colSpan="3" style={{ padding: '0.5rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem', letterSpacing: '2px' }}>
+                      <td colSpan="6" style={{ padding: '0.5rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem', letterSpacing: '2px' }}>
                         •••
                       </td>
                     </tr>
@@ -149,7 +151,9 @@ export default function Leaderboard() {
                       </td>
                       <td style={{ padding: '1rem 0.75rem', fontWeight: 600 }}>
                         <Link to={`/profile/${currentUser.id}`} style={{ color: 'var(--secondary)', textDecoration: 'none' }}>
-                          {currentUser.username} <span style={{ fontSize: '0.8rem', opacity: 0.8 }}>(You)</span>
+                          {currentUser.first_name || currentUser.last_name ? `${currentUser.first_name || ''} ${currentUser.last_name || ''}`.trim() : currentUser.username}
+                          {(currentUser.first_name || currentUser.last_name) && <span style={{ fontSize: '0.75rem', opacity: 0.6, marginLeft: '0.5rem', fontWeight: 'normal' }}>({currentUser.username})</span>}
+                          <span style={{ fontSize: '0.8rem', opacity: 0.8, marginLeft: '0.5rem' }}>(You)</span>
                         </Link>
                       </td>
                       <td style={{ padding: '1rem 0.75rem', textAlign: 'center', color: 'var(--text-muted)' }}>
@@ -203,7 +207,7 @@ export default function Leaderboard() {
             </div>
 
             <h3 style={{ marginBottom: '0.25rem', color: 'var(--text-main)', paddingRight: '2rem' }}>
-              {selectedUser.username}'s Points
+              {selectedUser.first_name || selectedUser.last_name ? `${selectedUser.first_name || ''} ${selectedUser.last_name || ''}`.trim() : selectedUser.username}'s Points
             </h3>
             <div style={{ color: 'var(--text-muted)', fontSize: '0.95rem', marginBottom: '0.5rem' }}>
               Accuracy: <span style={{ color: 'var(--accent)', fontWeight: 'bold' }}>{selectedUser.accuracy_percentage}%</span> ({selectedUser.correct_predictions} matched / {selectedUser.finished_predictions} played)
