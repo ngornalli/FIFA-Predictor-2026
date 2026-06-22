@@ -15,7 +15,7 @@ const renderPlayerName = (user, currentUserId) => {
         {user.id === currentUserId && <span style={{ fontSize: '0.8rem', opacity: 0.8, marginLeft: '0.5rem' }}>(You)</span>}
       </span>
       {subName && (
-        <span style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 'normal', marginTop: '0.1rem' }}>@{subName}</span>
+        <span style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 'normal', marginTop: '0.1rem' }}>({subName})</span>
       )}
     </Link>
   );
