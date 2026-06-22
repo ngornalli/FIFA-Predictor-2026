@@ -455,8 +455,7 @@ function LeagueLeaderboard({ league, currentUserId, onLeave, setInfoModal }) {
                     </tr>
                   ) : (
                     <>
-                      {/* Top 5 Displayed */}
-                      {members.slice(0, 5).map((user) => (
+                      {members.map((user) => (
                         <tr 
                           key={user.id} 
                           style={{ 
@@ -492,47 +491,6 @@ function LeagueLeaderboard({ league, currentUserId, onLeave, setInfoModal }) {
                           </td>
                         </tr>
                       ))}
-
-                      {/* Current User Row (if they are below rank 5) */}
-                      {currentUserIndex >= 5 && currentUser && (
-                        <>
-                          <tr style={{ backgroundColor: 'rgba(0,0,0,0.3)' }}>
-                            <td colSpan="6" style={{ padding: '0.5rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem', letterSpacing: '2px' }}>
-                              •••
-                            </td>
-                          </tr>
-                          <tr 
-                            style={{ 
-                              borderBottom: '1px solid rgba(255,255,255,0.05)', 
-                              backgroundColor: 'rgba(56, 189, 248, 0.15)',
-                              borderLeft: '4px solid var(--secondary)'
-                            }}
-                          >
-                            <td style={{ padding: '1rem 0.75rem', fontWeight: 'bold', verticalAlign: 'middle' }}>
-                              <span style={{ paddingLeft: '4px' }}>{currentUser.rank}</span>
-                            </td>
-                            <td style={{ padding: '1rem 0.75rem', verticalAlign: 'middle' }}>
-                              {renderPlayerName(currentUser, currentUserId)}
-                            </td>
-                            <td style={{ padding: '1rem 0.75rem', textAlign: 'center', color: 'var(--text-muted)', verticalAlign: 'middle' }}>
-                              {currentUser.finished_predictions}
-                            </td>
-                            <td style={{ padding: '1rem 0.75rem', textAlign: 'center', color: 'var(--text-muted)', verticalAlign: 'middle' }}>
-                              {currentUser.correct_predictions}
-                            </td>
-                            <td style={{ padding: '1rem 0.75rem', textAlign: 'center', fontWeight: 'bold', color: 'var(--accent)', verticalAlign: 'middle' }}>
-                              {currentUser.accuracy_percentage}%
-                            </td>
-                            <td 
-                              style={{ padding: '1rem 0.75rem', textAlign: 'right', fontSize: '1.1rem', color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline', verticalAlign: 'middle' }}
-                              onClick={() => openBreakdown(currentUser)}
-                              title={`View your points breakdown`}
-                            >
-                              {currentUser.total_points}
-                            </td>
-                          </tr>
-                        </>
-                      )}
                     </>
                   )}
                 </tbody>
