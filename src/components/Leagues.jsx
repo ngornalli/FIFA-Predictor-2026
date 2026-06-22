@@ -252,9 +252,11 @@ export default function Leagues({ session }) {
                   <div style={{ background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
                     <h4 style={{ marginBottom: '0.5rem', color: 'var(--secondary)' }}>Scoring Rules</h4>
                     <ul style={{ margin: 0, paddingLeft: '1.2rem', color: 'var(--text-muted)', fontSize: '0.95rem' }}>
-                      <li style={{ marginBottom: '0.5rem' }}><strong>Exact Score (3 pts):</strong> You predicted 2-1, and the final score was 2-1.</li>
-                      <li style={{ marginBottom: '0.5rem' }}><strong>Correct Difference & Winner (2 pts):</strong> You predicted 2-0 (+2), and the final score was 3-1 (+2).</li>
-                      <li><strong>Correct Winner (1 pt):</strong> You predicted 1-0, and the final score was 3-0.</li>
+                      <li style={{ marginBottom: '0.5rem' }}><strong>Correct Winner / Draw (10 pts)</strong></li>
+                      <li style={{ marginBottom: '0.5rem' }}><strong>Correct Home Goals (5 pts)</strong></li>
+                      <li style={{ marginBottom: '0.5rem' }}><strong>Correct Away Goals (5 pts)</strong></li>
+                      <li style={{ marginBottom: '0.5rem' }}><strong>Correct Goal Difference (5 pts)</strong></li>
+                      <li><strong>Exact Score Bonus (5 pts)</strong></li>
                     </ul>
                   </div>
                 </>
