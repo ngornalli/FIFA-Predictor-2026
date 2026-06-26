@@ -40,85 +40,21 @@ export default function AdminMatches() {
     setSyncing(true);
     setSyncMessage(null);
 
-    try {
-      let response;
-      try {
-        response = await fetch('https://api.football-data.org/v4/competitions/WC/matches', {
-          headers: { 'X-Auth-Token': '8847953b15df4660b1c78ecd81299f12' }
-        });
-      } catch (err) {
-        // Fallback to CORS proxy if direct fetch fails
-        response = await fetch('https://corsproxy.io/?https://api.football-data.org/v4/competitions/WC/matches', {
-          headers: { 'X-Auth-Token': '8847953b15df4660b1c78ecd81299f12' }
-        });
-      }
+    const { data, error } = await supabase.rpc('sync_football_data');
 
-      if (!response || !response.ok) {
-        throw new Error(`API returned status ${response?.status || 'unknown'}`);
-      }
-
-      const data = await response.json();
-      const apiMatches = data.matches || [];
-
-      if (apiMatches.length === 0) {
-        setSyncMessage({ type: 'info', text: 'API fetched successfully, but no matches were found for competition WC.' });
-        setSyncing(false);
-        return;
-      }
-
-      const normalize = (name) => {
-        if (!name) return '';
-        return name.toLowerCase().replace('united states', 'usa').replace(/[^a-z0-9]/g, '');
-      };
-
-      const updates = [];
-      const updatedMatchesMap = {};
-
-      for (const dbMatch of matches) {
-        const apiMatch = apiMatches.find(am => {
-          const amHome = normalize(am.homeTeam?.name || am.homeTeam?.shortName);
-          const amAway = normalize(am.awayTeam?.name || am.awayTeam?.shortName);
-          const dbHome = normalize(dbMatch.home_team);
-          const dbAway = normalize(dbMatch.away_team);
-          return (amHome === dbHome && amAway === dbAway) || (amHome === dbAway && amAway === dbHome);
-        });
-
-        if (apiMatch && apiMatch.status === 'FINISHED') {
-          const homeScore = apiMatch.score?.fullTime?.home ?? apiMatch.score?.regularTime?.home;
-          const awayScore = apiMatch.score?.fullTime?.away ?? apiMatch.score?.regularTime?.away;
-
-          if (homeScore !== null && homeScore !== undefined && 
-             (dbMatch.home_score !== homeScore || dbMatch.away_score !== awayScore || dbMatch.status !== 'finished')) {
-            updates.push({
-              id: dbMatch.id,
-              home_score: homeScore,
-              away_score: awayScore,
-              status: 'finished'
-            });
-            updatedMatchesMap[dbMatch.id] = { home_score: homeScore, away_score: awayScore, status: 'finished' };
-          }
-        }
-      }
-
-      if (updates.length === 0) {
-        setSyncMessage({ type: 'success', text: `Checked ${apiMatches.length} live matches. All finished match scores are already up to date!` });
-      } else {
-        // Apply updates to Supabase
-        for (const update of updates) {
-          await supabase.from('matches').update({
-            home_score: update.home_score,
-            away_score: update.away_score,
-            status: update.status
-          }).eq('id', update.id);
-        }
-
-        // Update local state
-        setMatches(matches.map(m => updatedMatchesMap[m.id] ? { ...m, ...updatedMatchesMap[m.id] } : m));
-        setSyncMessage({ type: 'success', text: `Successfully synced and updated ${updates.length} finished matches from live API!` });
-      }
-    } catch (error) {
+    if (error) {
       console.error("API Sync Error:", error);
-      setSyncMessage({ type: 'error', text: `Failed to sync live scores: ${error.message}. Check your API token or network connection.` });
+      setSyncMessage({ type: 'error', text: `Failed to sync live scores: ${error.message}. Make sure the sync_football_data RPC is set up in Supabase.` });
+    } else {
+      // Reload matches from Supabase to get updated scores
+      const { data: updatedMatches } = await supabase
+        .from('matches')
+        .select('*')
+        .order('kickoff_time', { ascending: true });
+      
+      if (updatedMatches) setMatches(updatedMatches);
+      
+      setSyncMessage({ type: 'success', text: data || 'Successfully triggered live API sync and refreshed matches!' });
     }
 
     setSyncing(false);
